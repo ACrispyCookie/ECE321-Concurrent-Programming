@@ -16,8 +16,19 @@ int pipe_open(const int size) {
 
 int pipe_write(int p, char c) {
     const pipe_t *to_write = pipe_get(p);
-    if (to_write == NULL)
+    int cur_write = to_write->ring_buffer->write;
+    int cur_read = to_write->ring_buffer->read;
+
+    if (to_write == NULL || !to_write->open_to_write) 
         return -1;
+    
+    while (to_write->ring_buffer->full) {
+        // wait
+    }
+
+    to_write->ring_buffer->buffer[cur_write] = c;
+    cur_write = (cur_write + 1) % to_write->ring_buffer->size;
+    to_write->ring_buffer->full = (cur_write == cur_read);
 
     return 1;
 }
@@ -26,16 +37,31 @@ int pipe_writeDone(int p) {
     pipe_t *to_write = pipe_get(p);
     if (to_write == NULL)
         return -1;
+    
+    to_write->open_to_write = 0;
 
-    return ;
+    return 1;
 }
 
 int pipe_read(int p, char *c) {
-    pipe_t *to_write = pipe_get(p);
-    if (to_write == NULL)
+    pipe_t *cur_pipe = pipe_get(p);
+    if (cur_pipe == NULL)
         return -1;
 
-    return ;
+    while ((cur_pipe->ring_buffer->read == cur_pipe->ring_buffer->write) && !cur_pipe->ring_buffer->full && cur_pipe->open_to_write) {
+        // wait
+    }
+
+    if (cur_pipe->ring_buffer->read == cur_pipe->ring_buffer->write && !cur_pipe->open_to_write) {
+        pipe_remove(p);
+        return 0;
+    }
+
+    *c = *(cur_pipe->ring_buffer->buffer + cur_pipe->ring_buffer->read);
+    cur_pipe->ring_buffer->read = (cur_pipe->ring_buffer->read + 1) % cur_pipe->ring_buffer->size;
+    cur_pipe->ring_buffer->full = 0;
+    
+    return 1;
 }
 
 pipe_t *pipe_new(int size) {
