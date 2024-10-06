@@ -13,7 +13,7 @@ typedef struct ring_buffer {
 typedef struct pipe {
     int id;
     int open_to_write;
-    ring_buffer_t *buffer;
+    ring_buffer_t *ring_buffer;
 } pipe_t;
 
 typedef struct pipeList {
@@ -33,10 +33,11 @@ int list_next_id();
 
 int pipe_open(const int size) {
     pipe_t *new_pipe = malloc(sizeof(pipe_t));
-    new_pipe->buffer = malloc(sizeof(ring_buffer_t *));
-    new_pipe->buffer->size = size;
-    new_pipe->buffer->read = 0;
-    new_pipe->buffer->write = 0;
+    new_pipe->ring_buffer = malloc(sizeof(ring_buffer_t *));
+    new_pipe->ring_buffer->buffer = malloc(size * sizeof(char));
+    new_pipe->ring_buffer->size = size;
+    new_pipe->ring_buffer->read = 0;
+    new_pipe->ring_buffer->write = 0;
     new_pipe->open_to_write = 1;
     list_add(new_pipe);
 
@@ -99,7 +100,8 @@ int list_remove(const int pipe_id) {
         return -1;
 
     pipe_t *to_remove = list->pipes[pipe_id];
-    free(to_remove->buffer);
+    free(to_remove->ring_buffer->buffer);
+    free(to_remove->ring_buffer);
     free(to_remove);
     list->pipes[pipe_id] = NULL;
     list_check_destroy();
@@ -126,3 +128,8 @@ int list_destroy() {
     return 0;
 }
 
+int main (int argc, char *argv[]) {
+    
+
+    return 0;
+}
