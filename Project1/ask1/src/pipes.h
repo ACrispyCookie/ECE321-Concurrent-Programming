@@ -10,16 +10,14 @@ typedef struct ring_buffer {
 } ring_buffer_t;
 
 typedef struct pipe {
-    int id;
+    unsigned int id;
     int open_to_write;
     ring_buffer_t *ring_buffer;
 } pipe_t;
 
-int pipe_open(int size);
-int pipe_write(int p, char c);
-int pipe_writeDone(int p);
-int pipe_read(int p, char *c);
-
-int next_id = 0;
+unsigned int pipe_open(int size);
+int pipe_write(unsigned int p, char c);
+int pipe_writeDone(unsigned int p);
+int pipe_read(unsigned int p, char *c);
 
 #endif

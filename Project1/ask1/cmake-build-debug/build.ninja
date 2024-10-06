@@ -56,6 +56,13 @@ build CMakeFiles/ask1.dir/src/pipes.c.obj: C_COMPILER__ask1_unscanned_Debug C$:/
   OBJECT_DIR = CMakeFiles\ask1.dir
   OBJECT_FILE_DIR = CMakeFiles\ask1.dir\src
 
+build CMakeFiles/ask1.dir/test/test1.c.obj: C_COMPILER__ask1_unscanned_Debug C$:/Users/nikas/ownCloud/University-shared/ECE321/Project1/ask1/test/test1.c || cmake_object_order_depends_target_ask1
+  DEP_FILE = CMakeFiles\ask1.dir\test\test1.c.obj.d
+  FLAGS = -g -std=gnu11 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/nikas/ownCloud/University-shared/ECE321/Project1/ask1/src
+  OBJECT_DIR = CMakeFiles\ask1.dir
+  OBJECT_FILE_DIR = CMakeFiles\ask1.dir\test
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target ask1
@@ -64,7 +71,7 @@ build CMakeFiles/ask1.dir/src/pipes.c.obj: C_COMPILER__ask1_unscanned_Debug C$:/
 #############################################
 # Link the executable ask1.exe
 
-build ask1.exe: C_EXECUTABLE_LINKER__ask1_Debug CMakeFiles/ask1.dir/src/pipes.c.obj
+build ask1.exe: C_EXECUTABLE_LINKER__ask1_Debug CMakeFiles/ask1.dir/src/pipes.c.obj CMakeFiles/ask1.dir/test/test1.c.obj
   FLAGS = -g
   LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\ask1.dir
