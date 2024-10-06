@@ -48,14 +48,6 @@ int pipe_write(int p, char c) {
     if (to_write == NULL)
         return -1;
 
-    int next_write = to_write->buffer->write;
-    if (next_write == to_write->buffer->size)
-        next_write = 0;
-
-    if (next_write == to_write->buffer->read); //wait
-
-    to_write->buffer->buffer[]
-
     return 1;
 }
 
