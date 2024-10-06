@@ -8,5 +8,4 @@ include_directories(src)
 add_executable(ask1
     src/pipes.c
     src/pipes.h
-        src/uthash.h
 )

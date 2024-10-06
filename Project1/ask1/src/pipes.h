@@ -1,8 +1,6 @@
 #ifndef PIPES_H
 #define PIPES_H
 
-#include "uthash.h"
-
 typedef struct ring_buffer {
     int size;
     int read;
@@ -15,7 +13,6 @@ typedef struct pipe {
     int id;
     int open_to_write;
     ring_buffer_t *ring_buffer;
-    UT_hash_handle hh;
 } pipe_t;
 
 int pipe_open(int size);
