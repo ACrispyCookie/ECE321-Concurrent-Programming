@@ -1,0 +1,3 @@
+C:/Users/nikas/ownCloud/University-shared/ECE321/Project1/ask1/cmake-build-debug/CMakeFiles/ask1.dir
+C:/Users/nikas/ownCloud/University-shared/ECE321/Project1/ask1/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/nikas/ownCloud/University-shared/ECE321/Project1/ask1/cmake-build-debug/CMakeFiles/rebuild_cache.dir
