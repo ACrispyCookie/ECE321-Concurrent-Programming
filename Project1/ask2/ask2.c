@@ -92,7 +92,8 @@ int create_workers(const int N) {
         main_signals[i].signal = WAIT;
         main_signals[i].process_value = 0;
         main_signals[i].id = i;
-        pthread_create(NULL, NULL, run_worker, &main_signals[i].id);
+        pthread_t thread;
+        pthread_create(&thread, NULL, run_worker, &main_signals[i].id);
     }
     return 0;
 }
