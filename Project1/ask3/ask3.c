@@ -1,21 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <string.h>
+
+#define small 64
 
 typedef struct sort_info {
     pthread_t tid;
     int start;
     int end;
-    int running;
+    volatile int running;
 } sort_info_t;
 
-int *array;
-int *sorted_array;
-int size;
+char *file_name;
+volatile int file_busy = 0;
 
 void *run_thread(void *arg);
 void create_threads_rec(int start, int end);
-void merge_arrays(const int *array1, const int *array2, int *sorted_array, int size1, int size2);
+void merge_arrays(int array1_start, int array2_start, int array3_start, int size1, int size2);
+size_t read_from_file(int *buffer, int start, int element_count);
+size_t write_to_file(const int *buffer, int start, int element_count);
 void print_array(const int *array, int size);
 int qsort_comparator(const void *int1, const void *int2);
 
@@ -25,65 +29,53 @@ int main(const int argc, char *argv[]) {
         return -1;
     }
 
-    FILE *binary_file = fopen(argv[1], "r");
-    fseek(binary_file, 0, SEEK_END);
-    const int file_size = ftell(binary_file) + 1;
-    fseek(binary_file, 0, SEEK_SET);
-
-    size = file_size / sizeof(int);
-    array = malloc(file_size);
-    sorted_array = malloc(file_size);
-    if (array == NULL || sorted_array == NULL)
+    file_name = malloc((strlen(argv[1]) + 1) * sizeof(char));
+    strcpy(file_name, argv[1]);
+    FILE *file_to_read = fopen(file_name, "r");
+    if (file_to_read == NULL) {
+        printf("Error opening file!");
         return -1;
-    fread(array, file_size, 1, binary_file);
-    printf("size: %d\n", file_size);
-    printf("Unsorted array:\n");
-    print_array(array, size);
-
-    create_threads_rec(0, size - 1);
-    merge_arrays(array, array + (size / 2 + 1), sorted_array, size / 2, size - 1);
-    printf("Sorted array:\n");
-    print_array(sorted_array, size);
-
-    int is_sorted = 1;
-    int i_not = 0;
-    int element = *sorted_array;
-    for (int i = 1; i < size; i++) {
-        if (element > *(sorted_array + i)) {
-            i_not = i;
-            is_sorted = 0;
-            break;
-        }
     }
-    printf("is_sorted: %d, %d\n", is_sorted, i_not);
+    fseek(file_to_read, 0, SEEK_END);
+    const int file_size = ftell(file_to_read);
+    fclose(file_to_read);
 
-    free(sorted_array);
-    free(array);
+    const int size = file_size / sizeof(int);
+    const int mid = size / 2;
+    create_threads_rec(0, size - 1);
+    merge_arrays(0, mid, 0, mid, size - mid);
     return 0;
 }
 
 void *run_thread(void *arg) {
     sort_info_t *info = arg;
     const int size = info->end - info->start + 1;
-    if (size <= 64) {
-        qsort(array + info->start, size, sizeof(int), qsort_comparator);
+    if (size <= small) {
+        int *buffer = malloc(size * sizeof(int));
+        read_from_file(buffer, info->start, size);
+        qsort(buffer, size, sizeof(int), qsort_comparator);
+        write_to_file(buffer, info->start, size);
+        free(buffer);
         info->running = 0;
         return NULL;
     }
-    create_threads_rec(info->start, info->end);
-    merge_arrays(array + info->start, array + info->start + size / 2 + 1, sorted_array + info->start,
-        size / 2 + 1, info->end - (info->start + size / 2 + 1) + 1);
 
+    const int mid = size / 2;
+    create_threads_rec(info->start, info->end);
+    merge_arrays(info->start, info->start + mid, info->start, mid, size - mid);
+    info->running = 0;
     return NULL;
 }
 
-void create_threads_rec(int start, int end) {
-    sort_info_t *info1 = malloc(sizeof(sort_info_t *));
+void create_threads_rec(const int start, const int end) {
+    const int size = end - start + 1;
+    const int mid = start + size / 2;
+    sort_info_t *info1 = malloc(sizeof(sort_info_t));
     info1->start = start;
-    info1->end = start + size / 2;
+    info1->end = mid - 1;
     info1->running = 1;
-    sort_info_t *info2 = malloc(sizeof(sort_info_t *));
-    info2->start = start + size / 2 + 1;
+    sort_info_t *info2 = malloc(sizeof(sort_info_t));
+    info2->start = mid;
     info2->end = end;
     info2->running = 1;
     pthread_create(&info1->tid, NULL, run_thread, info1);
@@ -94,21 +86,36 @@ void create_threads_rec(int start, int end) {
     free(info2);
 }
 
-void merge_arrays(const int *array1, const int *array2, int *sorted_array, const int size1, const int size2) {
+void merge_arrays(const int array1_start, const int array2_start, const int array3_start, const int size1, const int size2) {
     int i = 0, j = 0, k = 0;
+    int *array1 = malloc(size1 * sizeof(int));
+    int *array2 = malloc(size2 * sizeof(int));
+    int *array3 = malloc((size1 + size2) * sizeof(int));
+    read_from_file(array1, array1_start, size1);
+    read_from_file(array2, array2_start, size2);
 
     while (i < size1 && j < size2) {
         if (array1[i] < array2[j])
-            sorted_array[k++] = array1[i++];
+            array3[k++] = array1[i++];
         else
-            sorted_array[k++] = array2[j++];
+            array3[k++] = array2[j++];
     }
 
     while (i < size1)
-        sorted_array[k++] = array1[i++];
+        array3[k++] = array1[i++];
 
     while (j < size2)
-        sorted_array[k++] = array2[j++];
+        array3[k++] = array2[j++];
+
+    write_to_file(array3, array3_start, size1 + size2);
+    printf("---------------------------\n");
+    print_array(array1, size1);
+    print_array(array2, size2);
+    print_array(array3, size1 + size2);
+    printf("---------------------------\n");
+    free(array1);
+    free(array2);
+    free(array3);
 }
 
 void print_array(const int *array, const int size) {
@@ -116,6 +123,27 @@ void print_array(const int *array, const int size) {
         printf("%d ", *(array + i));
     }
     printf("\n");
+}
+
+size_t read_from_file(int *buffer, const int start, const int element_count) {
+    while (file_busy) {}
+    file_busy = 1;
+    FILE *file = fopen(file_name, "r");
+    fseek(file, (long) start * sizeof(int), SEEK_SET);
+    const size_t bytes_read = fread(buffer, sizeof(int), element_count, file);
+    fclose(file);
+    file_busy = 0;
+    return bytes_read;
+}
+size_t write_to_file(const int *buffer, const int start, const int element_count) {
+    while (file_busy) {}
+    file_busy = 1;
+    FILE *file = fopen(file_name, "w");
+    fseek(file, (long) start * sizeof(int), SEEK_SET);
+    const size_t bytes_read = fwrite(buffer, sizeof(int), element_count, file);
+    fclose(file);
+    file_busy = 0;
+    return bytes_read;
 }
 
 int qsort_comparator(const void *int1, const void *int2) {

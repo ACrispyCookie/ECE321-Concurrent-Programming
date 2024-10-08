@@ -12,11 +12,11 @@ pipe_t *pipe_get(unsigned int pipe_id, int *pipe_index);
 int pipe_remove(unsigned int pipe_id);
 
 unsigned int pipe_open(const int size) {
-    pipe_t *pipe = malloc(sizeof(pipe_t *));
+    pipe_t *pipe = malloc(sizeof(pipe_t));
     if (pipe == NULL)
         return -1;
     pipe->open_to_write = 1;
-    pipe->ring_buffer = malloc(sizeof(ring_buffer_t *));
+    pipe->ring_buffer = malloc(sizeof(ring_buffer_t));
     pipe->ring_buffer->buffer = malloc(size * sizeof(char));
     pipe->ring_buffer->size = size;
     pipe->ring_buffer->read = 0;
