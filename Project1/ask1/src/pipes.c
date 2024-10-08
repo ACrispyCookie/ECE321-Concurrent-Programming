@@ -4,9 +4,9 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-pipe_t **pipes = NULL;
-int pipe_count = 0;
-unsigned int next_id = 0;
+static pipe_t **pipes = NULL;
+static unsigned int pipe_count = 0;
+
 int pipe_add(pipe_t *pipe);
 pipe_t *pipe_get(unsigned int pipe_id, int *pipe_index);
 int pipe_remove(unsigned int pipe_id);
@@ -79,13 +79,12 @@ int pipe_read(unsigned int p, char *c) {
 }
 
 int pipe_add(pipe_t *pipe) {
-    pipe->id = next_id;
-    pipe_t **new_pipes = realloc(pipes, ++pipe_count * sizeof(pipe_t *));
+    pipe->id = ++pipe_count;
+    pipe_t **new_pipes = realloc(pipes, pipe_count * sizeof(pipe_t *));
     if (new_pipes == NULL)
         return -1;
     pipes = new_pipes;
     pipes[pipe_count - 1] = pipe;
-    ++next_id;
     return 0;
 }
 

@@ -2,12 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "../src/pipes.h"
 
-volatile unsigned int pipe_id1, pipe_id2;
-volatile unsigned int thread1_done = 0, thread2_done = 0;
+unsigned int pipe_id1, pipe_id2;
+unsigned int thread1_done = 0, thread2_done = 0;
 
 void *thr1(void *filename);
 void *thr2(void *filename);

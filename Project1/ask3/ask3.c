@@ -3,17 +3,14 @@
 #include <pthread.h>
 #include <string.h>
 
-#define small 64
-
 typedef struct sort_info {
     pthread_t tid;
     int start;
     int end;
-    volatile int running;
+    int running;
 } sort_info_t;
 
-char *file_name;
-volatile int file_busy = 0;
+static char *file_name;
 
 void *run_thread(void *arg);
 void create_threads_rec(int start, int end);
@@ -50,7 +47,7 @@ int main(const int argc, char *argv[]) {
 void *run_thread(void *arg) {
     sort_info_t *info = arg;
     const int size = info->end - info->start + 1;
-    if (size <= small) {
+    if (size <= 64) {
         int *buffer = malloc(size * sizeof(int));
         read_from_file(buffer, info->start, size);
         qsort(buffer, size, sizeof(int), qsort_comparator);
@@ -126,23 +123,17 @@ void print_array(const int *array, const int size) {
 }
 
 size_t read_from_file(int *buffer, const int start, const int element_count) {
-    while (file_busy) {}
-    file_busy = 1;
     FILE *file = fopen(file_name, "r");
     fseek(file, (long) start * sizeof(int), SEEK_SET);
     const size_t bytes_read = fread(buffer, sizeof(int), element_count, file);
     fclose(file);
-    file_busy = 0;
     return bytes_read;
 }
 size_t write_to_file(const int *buffer, const int start, const int element_count) {
-    while (file_busy) {}
-    file_busy = 1;
-    FILE *file = fopen(file_name, "w");
+    FILE *file = fopen(file_name, "r+");
     fseek(file, (long) start * sizeof(int), SEEK_SET);
     const size_t bytes_read = fwrite(buffer, sizeof(int), element_count, file);
     fclose(file);
-    file_busy = 0;
     return bytes_read;
 }
 

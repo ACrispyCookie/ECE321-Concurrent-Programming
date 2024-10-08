@@ -20,8 +20,8 @@ typedef enum worker_signal {
     TERMINATING
 } worker_to_main_signal;
 
-main_to_worker_signal *main_signals;
-worker_to_main_signal *worker_signals;
+static main_to_worker_signal *main_signals;
+static worker_to_main_signal *worker_signals;
 
 int check_terminated_workers(int N);
 int check_available_worker(int N);
