@@ -12,7 +12,7 @@ void *thr1(void *filename);
 void *thr2(void *filename);
 size_t write_file_to_pipe(const char *filename, unsigned int pipe_id);
 size_t read_file_from_pipe(const char *filename, unsigned int pipe_id);
-
+char* create_copy_filename(const char* filename, const char* insert);
 
 int main(const int argc, char *argv[]) {
     if (argc != 2) {
@@ -41,9 +41,10 @@ int main(const int argc, char *argv[]) {
 void *thr1(void *filename) {
     write_file_to_pipe(filename, pipe_id1);
 
-    char *copy2_name = malloc((strlen(filename) + 6) * sizeof(char));
-    strcpy(copy2_name, filename);
-    strcat(copy2_name, ".copy2");
+    char *copy2_name = create_copy_filename(filename, ".copy2");
+    // char *copy2_name = malloc((strlen(filename) + 6) * sizeof(char));
+    // strcpy(copy2_name, filename);
+    // strcat(copy2_name, ".copy2");
     read_file_from_pipe(copy2_name, pipe_id2);
 
     free(copy2_name);
@@ -52,9 +53,10 @@ void *thr1(void *filename) {
 }
 
 void *thr2(void *filename) {
-    char *copy_name = malloc((strlen(filename) + 5) * sizeof(char));
-    strcpy(copy_name, filename);
-    strcat(copy_name, ".copy");
+    char *copy_name = create_copy_filename(filename, ".copy");
+    // char *copy_name = malloc((strlen(filename) + 5) * sizeof(char));
+    // strcpy(copy_name, filename);
+    // strcat(copy_name, ".copy");
     read_file_from_pipe(copy_name, pipe_id1);
     write_file_to_pipe(copy_name, pipe_id2);
 
@@ -93,4 +95,40 @@ size_t read_file_from_pipe(const char *filename, const unsigned int pipe_id) {
     }
     fclose(file);
     return total_bytes;
+}
+
+char* create_copy_filename(const char* filename, const char* insert) {
+    // Find the position of the last '.' in the filename (which separates the extension)
+    const char *dot = strrchr(filename, '.');
+
+    // If no extension is found, the dot is set to NULL
+    if (dot == NULL) {
+        // No extension found, just append the custom string at the end
+        size_t len = strlen(filename);
+        size_t insert_len = strlen(insert);
+        char *new_filename = malloc(len + insert_len + 1); // Original length + custom string + '\0'
+        if (new_filename == NULL) {
+            perror("Error allocating memory");
+            return NULL;
+        }
+        sprintf(new_filename, "%s%s", filename, insert);
+        return new_filename;
+    }
+
+    // If there's an extension, inject the custom string before the extension
+    size_t base_len = dot - filename;
+    size_t ext_len = strlen(dot);
+    size_t insert_len = strlen(insert);
+    char *new_filename = malloc(base_len + insert_len + ext_len + 1); // base name + custom string + extension + '\0'
+    if (new_filename == NULL) {
+        perror("Error allocating memory");
+        return NULL;
+    }
+    // Copy base part of the filename
+    strncpy(new_filename, filename, base_len);
+    new_filename[base_len] = '\0';  // Null terminate the base name
+    // Append the custom string and the original extension
+    strcat(new_filename, insert);
+    strcat(new_filename, dot);
+    return new_filename;
 }

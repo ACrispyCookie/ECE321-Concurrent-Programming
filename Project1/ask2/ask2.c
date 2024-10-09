@@ -2,26 +2,26 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-enum main_signal {
+enum main_command {
     WAIT,
     PROCESS_VALUE,
     TERMINATE
 };
 
-typedef struct main_command {
-    enum main_signal signal;
-    long long int process_value;
-    int id;
-} main_to_worker_signal;
-
-typedef enum worker_signal {
+enum worker_state {
     AVAILABLE,
     WORKING,
     TERMINATING
-} worker_to_main_signal;
+};
 
-static main_to_worker_signal *main_signals;
-static worker_to_main_signal *worker_signals;
+typedef struct worker {
+    int id;
+    enum worker_state state;
+    enum main_command command;
+    long long int value_to_process;
+} worker_t;
+
+static worker_t *workers;
 
 int check_terminated_workers(int N);
 int check_available_worker(int N);
@@ -51,26 +51,23 @@ int main(const int argc, char *argv[]) {
         }
 
         // notify worker to process value and wait for it to start processing
-        main_signals[available_worker].process_value = input;
-        main_signals[available_worker].signal = PROCESS_VALUE;
-        // edw yparxei periptwsh na parei ton cpu to worker prin prolavei h main na allaksei to notification se wait
-        // ara mporei to worker na elegxei to idio value polles fores mexri na parei ksana to cpu h main
-        while (worker_signals[available_worker] != WORKING) {}
-        main_signals[available_worker].signal = WAIT;
+        workers[available_worker].value_to_process = input;
+        workers[available_worker].command = PROCESS_VALUE;
+        // perimenoume ton worker na ksekinhsei na doulevei wste na mhn ksanadwsei h main task ston idio worker
+        while (workers[available_worker].state != WORKING) {}
     }
 
     for (int i = 0; i < N; i++)
-        main_signals[i].signal = TERMINATE;
+        workers[i].command = TERMINATE;
     while(!check_terminated_workers(N)) {}
 
-    free(worker_signals);
-    free(main_signals);
+    free(workers);
     return 0;
 }
 
 int check_terminated_workers(const int N) {
     for (int i = 0; i < N; i++) {
-        if (worker_signals[i] != TERMINATING)
+        if (workers[i].state != TERMINATING)
             return 0;
     }
     return 1;
@@ -78,36 +75,38 @@ int check_terminated_workers(const int N) {
 
 int check_available_worker(const int N) {
     for (int i = 0; i < N; i++) {
-        if (worker_signals[i] == AVAILABLE)
+        if (workers[i].state == AVAILABLE)
             return i;
     }
     return -1;
 }
 
 int create_workers(const int N) {
-    main_signals = malloc(N * sizeof(main_to_worker_signal));
-    worker_signals = malloc(N * sizeof(worker_to_main_signal));
+    workers = malloc(N * sizeof(worker_t));
 
     for (int i = 0; i < N; i++) {
-        main_signals[i].signal = WAIT;
-        main_signals[i].process_value = 0;
-        main_signals[i].id = i;
+        workers[i].id = i;
+        workers[i].state = AVAILABLE;
+        workers[i].value_to_process = 0;
+        workers[i].command = WAIT;
         pthread_t thread;
-        pthread_create(&thread, NULL, run_worker, &main_signals[i].id);
+        pthread_create(&thread, NULL, run_worker, &workers[i]);
     }
     return 0;
 }
 
 void *run_worker(void *arg) {
-    const int id = *(int *) arg;
+    worker_t *self = arg;
     while(1) {
-        worker_signals[id] = AVAILABLE;
-        while (main_signals[id].signal == WAIT) {}
-        if (main_signals[id].signal == TERMINATE) break;
-        worker_signals[id] = WORKING;
-        printf("%lld is %sprime\n", main_signals[id].process_value, is_prime(main_signals[id].process_value) ? "" : "not ");
+        self->state = AVAILABLE;
+        while (self->command == WAIT) {}
+        if (self->command == TERMINATE) break;
+        //self acknowledging command
+        self->command = WAIT;
+        self->state = WORKING;
+        printf("Worker #%d: %lld is %sprime\n", self->id, self->value_to_process, is_prime(self->value_to_process) ? "" : "not ");
     }
-    worker_signals[id] = TERMINATING;
+    self->state = TERMINATING;
     return NULL;
 }
 

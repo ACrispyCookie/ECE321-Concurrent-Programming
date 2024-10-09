@@ -1,6 +1,5 @@
 #include "pipes.h"
 
-#include <io.h>
 #include <pthread.h>
 #include <stdlib.h>
 
