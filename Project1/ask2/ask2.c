@@ -71,14 +71,16 @@ void *run_worker(void *arg) {
     while(1) {
         self->state = AVAILABLE;
         while (self->command == WAIT) {}
-        if (self->command == TERMINATE) break;
+        if (self->command == TERMINATE) {
+            self->state = TERMINATING;
+            break;
+        }
         // reset command before setting the state of the worker
         // so that the master doesn't get his commands overwritten by the worker
         self->command = WAIT;
         self->state = WORKING;
         printf("Worker #%d: %lld is %sprime\n", self->id, self->value_to_process, is_prime(self->value_to_process) ? "" : "not ");
     }
-    self->state = TERMINATING;
     return NULL;
 }
 
