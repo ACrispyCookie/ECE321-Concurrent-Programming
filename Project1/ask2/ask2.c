@@ -44,16 +44,17 @@ int main(const int argc, char *argv[]) {
             break;
 
         // wait until you find an available worker
-        int available_worker = check_available_worker(workers, N);
-        while(available_worker == -1) {
-            available_worker = check_available_worker(workers, N);
+        int available_worker_id = check_available_worker(workers, N);
+        while(available_worker_id == -1) {
+            available_worker_id = check_available_worker(workers, N);
         }
 
+        worker_t *worker = workers + available_worker_id;
         // notify worker to process value and wait for it to start processing
-        workers[available_worker].value_to_process = input;
-        workers[available_worker].command = PROCESS_VALUE;
+        worker->value_to_process = input;
+        worker->command = PROCESS_VALUE;
         // wait for the worker to start working
-        while (workers[available_worker].state != WORKING) {}
+        while (worker->state == AVAILABLE && worker->command == PROCESS_VALUE) {}
     }
 
     for (int i = 0; i < N; i++)
