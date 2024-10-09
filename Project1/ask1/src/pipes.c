@@ -1,6 +1,7 @@
 #include "pipes.h"
 
 #include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 static pipe_t **pipes = NULL;
@@ -78,7 +79,7 @@ int pipe_read(unsigned int p, char *c) {
 }
 
 int pipe_add(pipe_t *pipe) {
-    pipe->id = ++pipe_count;
+    pipe->id = pipe_count++;
     pipe_t **new_pipes = realloc(pipes, pipe_count * sizeof(pipe_t *));
     if (new_pipes == NULL)
         return -1;

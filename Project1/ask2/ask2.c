@@ -100,13 +100,15 @@ int check_available_worker(const worker_t *workers, const int N) {
 int create_workers(worker_t **workers, const int N) {
     *workers = malloc(N * sizeof(worker_t));
 
+    pthread_t thread;
     for (int i = 0; i < N; i++) {
         (*workers)[i].id = i;
         (*workers)[i].state = AVAILABLE;
         (*workers)[i].value_to_process = 0;
         (*workers)[i].command = WAIT;
-        pthread_t thread;
-        pthread_create(&thread, NULL, run_worker, &(*workers)[i]);
+        const int res = pthread_create(&thread, NULL, run_worker, &(*workers)[i]);
+        if (res)
+            printf("Failed to create worker %d: %d", i, res);
     }
     return 0;
 }

@@ -5,14 +5,16 @@
 
 #include "../src/pipes.h"
 
-unsigned int pipe_id1, pipe_id2;
-unsigned int thread1_done = 0, thread2_done = 0;
+typedef struct copier {
+    unsigned int pipe_id1, pipe_id2;
+    char *filename, *filename_copy, *filename_copy2;
+    int done1, done2;
+} copier_t;
 
-void *thr1(void *filename);
-void *thr2(void *filename);
+void *thr1(void *arg);
+void *thr2(void *arg);
 size_t write_file_to_pipe(const char *filename, unsigned int pipe_id);
-size_t read_file_from_pipe(const char *filename, unsigned int pipe_id);
-char* create_copy_filename(const char* filename, const char* insert);
+size_t write_pipe_to_file(unsigned int pipe_id, const char *filename);
 
 int main(const int argc, char *argv[]) {
     if (argc != 2) {
@@ -20,48 +22,52 @@ int main(const int argc, char *argv[]) {
         return 1;
     }
 
-    pipe_id1 = pipe_open(64);
-    pipe_id2 = pipe_open(64);
+    copier_t *copier = malloc(sizeof(copier_t));
+    copier->pipe_id2 = pipe_open(64);
+    copier->pipe_id1 = pipe_open(64);
+    copier->done1 = 0;
+    copier->done2 = 0;
+    copier->filename = argv[1];
+    char *filename_copy = malloc((strlen(argv[1]) + 6) * sizeof(char));
+    char *filename_copy2 = malloc((strlen(argv[1]) + 7) * sizeof(char));
+    strcpy(filename_copy, argv[1]);
+    strcpy(filename_copy2, argv[1]);
+    strcat(filename_copy, ".copy");
+    strcat(filename_copy2, ".copy2");
+    copier->filename_copy = filename_copy;
+    copier->filename_copy2 = filename_copy2;
+
     pthread_t thread1, thread2;
-
-    const int res1 = pthread_create(&thread1, NULL, thr1, argv[1]);
-    if (res1) {
+    const int res1 = pthread_create(&thread1, NULL, thr1, copier);
+    if (res1)
         printf("Failed to create thread 1: %d", res1);
-    }
 
-    const int res2 = pthread_create(&thread2, NULL, thr2, argv[1]);
-    if (res2) {
+    const int res2 = pthread_create(&thread2, NULL, thr2, copier);
+    if (res2)
         printf("Failed to create thread 2: %d", res2);
-    }
-    while(!thread1_done || !thread2_done) {}
+    while(!copier->done1 || !copier->done2) {}
 
+    free(filename_copy);
+    free(filename_copy2);
+    free(copier);
     return 0;
 }
 
-void *thr1(void *filename) {
-    write_file_to_pipe(filename, pipe_id1);
+void *thr1(void *arg) {
+    copier_t *copier = arg;
+    write_file_to_pipe(copier->filename, copier->pipe_id1);
+    //write_pipe_to_file(copier->pipe_id2, copier->filename_copy2);
 
-    char *copy2_name = create_copy_filename(filename, ".copy2");
-    // char *copy2_name = malloc((strlen(filename) + 6) * sizeof(char));
-    // strcpy(copy2_name, filename);
-    // strcat(copy2_name, ".copy2");
-    read_file_from_pipe(copy2_name, pipe_id2);
-
-    free(copy2_name);
-    thread1_done = 1;
+    copier->done1 = 1;
     return NULL;
 }
 
-void *thr2(void *filename) {
-    char *copy_name = create_copy_filename(filename, ".copy");
-    // char *copy_name = malloc((strlen(filename) + 5) * sizeof(char));
-    // strcpy(copy_name, filename);
-    // strcat(copy_name, ".copy");
-    read_file_from_pipe(copy_name, pipe_id1);
-    write_file_to_pipe(copy_name, pipe_id2);
+void *thr2(void *arg) {
+    copier_t *copier = arg;
+    write_pipe_to_file(copier->pipe_id1, copier->filename_copy);
+    //write_file_to_pipe(copier->filename_copy, copier->pipe_id2);
 
-    free(copy_name);
-    thread2_done = 1;
+    copier->done2 = 1;
     return NULL;
 }
 
@@ -82,7 +88,7 @@ size_t write_file_to_pipe(const char *filename, const unsigned int pipe_id) {
     return total_bytes;
 }
 
-size_t read_file_from_pipe(const char *filename, const unsigned int pipe_id) {
+size_t write_pipe_to_file(const unsigned int pipe_id, const char *filename) {
     char buffer;
     size_t total_bytes = 0;
     FILE *file = fopen(filename, "w");
@@ -95,40 +101,4 @@ size_t read_file_from_pipe(const char *filename, const unsigned int pipe_id) {
     }
     fclose(file);
     return total_bytes;
-}
-
-char* create_copy_filename(const char* filename, const char* insert) {
-    // Find the position of the last '.' in the filename (which separates the extension)
-    const char *dot = strrchr(filename, '.');
-
-    // If no extension is found, the dot is set to NULL
-    if (dot == NULL) {
-        // No extension found, just append the custom string at the end
-        size_t len = strlen(filename);
-        size_t insert_len = strlen(insert);
-        char *new_filename = malloc(len + insert_len + 1); // Original length + custom string + '\0'
-        if (new_filename == NULL) {
-            perror("Error allocating memory");
-            return NULL;
-        }
-        sprintf(new_filename, "%s%s", filename, insert);
-        return new_filename;
-    }
-
-    // If there's an extension, inject the custom string before the extension
-    size_t base_len = dot - filename;
-    size_t ext_len = strlen(dot);
-    size_t insert_len = strlen(insert);
-    char *new_filename = malloc(base_len + insert_len + ext_len + 1); // base name + custom string + extension + '\0'
-    if (new_filename == NULL) {
-        perror("Error allocating memory");
-        return NULL;
-    }
-    // Copy base part of the filename
-    strncpy(new_filename, filename, base_len);
-    new_filename[base_len] = '\0';  // Null terminate the base name
-    // Append the custom string and the original extension
-    strcat(new_filename, insert);
-    strcat(new_filename, dot);
-    return new_filename;
 }
