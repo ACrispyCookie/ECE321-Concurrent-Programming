@@ -105,11 +105,11 @@ void merge_arrays(const int array1_start, const int array2_start, const int arra
         array3[k++] = array2[j++];
 
     write_to_file(array3, array3_start, size1 + size2);
-    printf("---------------------------\n");
-    print_array(array1, size1);
-    print_array(array2, size2);
-    print_array(array3, size1 + size2);
-    printf("---------------------------\n");
+    // printf("---------------------------\n");
+    // print_array(array1, size1);
+    // print_array(array2, size2);
+    // print_array(array3, size1 + size2);
+    // printf("---------------------------\n");
     free(array1);
     free(array2);
     free(array3);
