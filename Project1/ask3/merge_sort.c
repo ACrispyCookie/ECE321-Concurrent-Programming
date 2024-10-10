@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void merge_sort(FILE *file, int start, int end);
-void merge_arrays(const int array1_start, const int array2_start, const int array3_start, int size1, const int size2);
+void merge_sort(int start, int end);
+void merge_arrays(const int array1_start, const int array2_start, const int array3_start, const int size1, const int size2);
 size_t read_from_file(int *buffer, const int start, const int element_count);
 size_t write_to_file(const int *buffer, const int start, const int element_count);
 
@@ -14,15 +14,32 @@ int main(int argc, char *argv[]) {
     }
 
     file = fopen(argv[1], "r");
+    fseek(file, 0, SEEK_END);
+    const int file_size = ftell(file);
+
+    const int size = file_size / sizeof(int);
+    merge_sort(0, size - 1);
 }
 
-void merge_sort(int start, int end) {
+void merge_sort(const int start, const int end) {
     const int size = end - start + 1;
     const int mid = start + size / 2;
 
     if (size == 2) {
-
+        int *buffer = malloc(2 * sizeof(int));
+        read_from_file(buffer, start, 2);
+        if (buffer[0] > buffer[1]) {
+            const int temp = buffer[0];
+            buffer[0] = buffer[1];
+            buffer[1] = temp;
+        }
+        write_to_file(buffer, start, 2);
+        free(buffer);
+        return;
     }
+    // merge_sort(start, mid - 1);
+    // merge_sort(mid - 1, end);
+    merge_arrays(start, mid, start, mid, size - mid);
 }
 
 void merge_arrays(const int array1_start, const int array2_start, const int array3_start, const int size1, const int size2) {
@@ -60,12 +77,10 @@ void merge_arrays(const int array1_start, const int array2_start, const int arra
 size_t read_from_file(int *buffer, const int start, const int element_count) {
     fseek(file, (long) start * sizeof(int), SEEK_SET);
     const size_t bytes_read = fread(buffer, sizeof(int), element_count, file);
-    fclose(file);
     return bytes_read;
 }
 size_t write_to_file(const int *buffer, const int start, const int element_count) {
     fseek(file, (long) start * sizeof(int), SEEK_SET);
     const size_t bytes_read = fwrite(buffer, sizeof(int), element_count, file);
-    fclose(file);
     return bytes_read;
 }
