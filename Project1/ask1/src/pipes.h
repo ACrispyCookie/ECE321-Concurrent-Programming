@@ -5,7 +5,6 @@ typedef struct ring_buffer {
     int size;
     int read;
     int write;
-    int full;
     char *buffer;
 } ring_buffer_t;
 

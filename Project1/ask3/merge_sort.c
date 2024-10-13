@@ -13,11 +13,9 @@ int main(int argc, char *argv[]) {
         printf("Usage: ./merge_sort <filename>\n");
     }
 
-    file = fopen(argv[1], "r");
-    fseek(file, 0, SEEK_END);
-    const int file_size = ftell(file);
+    file = fopen(argv[1], "r+");
 
-    const int size = file_size / sizeof(int);
+    const int size = 10000;
     merge_sort(0, size - 1);
 }
 
@@ -37,8 +35,8 @@ void merge_sort(const int start, const int end) {
         free(buffer);
         return;
     }
-    // merge_sort(start, mid - 1);
-    // merge_sort(mid - 1, end);
+    merge_sort(start, mid - 1);
+    merge_sort(mid - 1, end);
     merge_arrays(start, mid, start, mid, size - mid);
 }
 

@@ -1,8 +1,8 @@
 #include "pipes.h"
 
 #include <pthread.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 static pipe_t **pipes = NULL;
 static unsigned int pipe_count = 0;
@@ -20,8 +20,7 @@ unsigned int pipe_open(const int size) {
     pipe->ring_buffer->buffer = malloc(size * sizeof(char));
     pipe->ring_buffer->size = size;
     pipe->ring_buffer->read = 0;
-    pipe->ring_buffer->write = 0;
-    pipe->ring_buffer->full = 0;
+    pipe->ring_buffer->write = 1;
     pipe_add(pipe);
 
     return pipe->id;
@@ -33,13 +32,12 @@ int pipe_write(unsigned int p, char c) {
         return -1;
 
     ring_buffer_t *cur_buffer = cur_pipe->ring_buffer;
-    while (cur_buffer->full) {
+    while ((cur_buffer->write + 1) % cur_buffer->size == cur_buffer->read) {
         // wait
     }
 
     cur_buffer->buffer[cur_buffer->write] = c;
     cur_buffer->write = (cur_buffer->write + 1) % cur_buffer->size;
-    cur_buffer->full = cur_buffer->write == cur_buffer->read;
 
     return 1;
 }
@@ -61,19 +59,18 @@ int pipe_read(unsigned int p, char *c) {
 
     ring_buffer_t *cur_buffer = cur_pipe->ring_buffer;
     // if there is nothing to read on the pipe and the pipe is open for writing
-    while (cur_buffer->read == cur_buffer->write && !cur_buffer->full && cur_pipe->open_to_write) {
+    while ((cur_buffer->read + 1) % cur_buffer->size == cur_buffer->write && cur_pipe->open_to_write) {
         // wait
     }
 
     // if the pipe is closed for writing and there is still nothing to read
-    if (!cur_pipe->open_to_write && cur_buffer->read == cur_buffer->write && !cur_buffer->full) {
+    if (!cur_pipe->open_to_write && (cur_buffer->read + 1) % cur_buffer->size == cur_buffer->write) {
         pipe_remove(p);
         return 0;
     }
 
-    *c = *(cur_buffer->buffer + cur_buffer->read);
+    *c = *(cur_buffer->buffer + ((cur_buffer->read + 1) % cur_buffer->size));
     cur_buffer->read = (cur_buffer->read + 1) % cur_buffer->size;
-    cur_buffer->full = 0;
     
     return 1;
 }
