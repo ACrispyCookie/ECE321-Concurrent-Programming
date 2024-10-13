@@ -2,7 +2,6 @@
 
 #include <pthread.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 static pipe_t **pipes = NULL;
 static unsigned int pipe_count = 0;
