@@ -5,15 +5,73 @@
 
 #include "../src/pipes.h"
 
+/*
+    A helper struct used to pass important
+    data used by the two threads.
+
+    Fields:
+    unsigned int pipe_id1 - The id of the first pipe to be used.
+    unsigned int pipe_id2 - The id of the second pipe to be used.
+    char *filename - The source file to write to the first pipe.
+    char *filename_copy - The first copy to be created by reading the first pipe.
+    char *filename_copy2 - The second copy to be created by reading the second pipe.
+    int done1 - Flag the describes the state of the first thread.
+    int done2 - Flag the describes the state of the second thread.
+*/
 typedef struct copier {
     unsigned int pipe_id1, pipe_id2;
     char *filename, *filename_copy, *filename_copy2;
     int done1, done2;
 } copier_t;
 
+/*
+    The function run by the first thread created that reads the
+    original file and writes its contents to the first pipe. After that
+    it reads bytes from the second pipe and writes it to the second copy of 
+    the original file.
+
+    Parameters:
+    void *arg - A pointer to the copier struct.
+    Returns:
+    NULL every time since the return value is always ignored.
+*/
 void *thr1(void *arg);
+
+/*
+    The function run by the second thread created that reads the
+    first pipe and writes its contents to the first copy of the original file.
+    After that it reads bytes from the first copy of the original file and writes 
+    its contents to the second pipe.
+
+    Parameters:
+    void *arg - A pointer to the copier struct.
+    Returns:
+    NULL every time since the return value is always ignored.
+*/
 void *thr2(void *arg);
+
+/*
+    Reads a file with the given name and writes it
+    byte by byte to the given pipe.
+
+    Parameters:
+    char *filename - The name of the file to read.
+    unsigned int pipe_id - The pipe to write the file contents to.
+    Returns:
+    The number of total bytes read from the file.
+*/
 size_t write_file_to_pipe(const char *filename, unsigned int pipe_id);
+
+/*
+    Reads a file from the given pipe and writes it to
+    a new file with the given name.
+
+    Parameters:
+    unsigned int pipe_id - The pipe to read the file from.
+    char *filename - The name of the file to create and write the pipe contents to.
+    Returns:
+    The number of total bytes read from the pipe.
+*/
 size_t write_pipe_to_file(unsigned int pipe_id, const char *filename);
 
 int main(const int argc, char *argv[]) {
@@ -56,7 +114,7 @@ int main(const int argc, char *argv[]) {
 void *thr1(void *arg) {
     copier_t *copier = arg;
     write_file_to_pipe(copier->filename, copier->pipe_id1);
-    //write_pipe_to_file(copier->pipe_id2, copier->filename_copy2);
+    write_pipe_to_file(copier->pipe_id2, copier->filename_copy2);
 
     copier->done1 = 1;
     return NULL;
@@ -65,7 +123,7 @@ void *thr1(void *arg) {
 void *thr2(void *arg) {
     copier_t *copier = arg;
     write_pipe_to_file(copier->pipe_id1, copier->filename_copy);
-    //write_file_to_pipe(copier->filename_copy, copier->pipe_id2);
+    write_file_to_pipe(copier->filename_copy, copier->pipe_id2);
 
     copier->done2 = 1;
     return NULL;

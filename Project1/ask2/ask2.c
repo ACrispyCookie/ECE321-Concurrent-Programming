@@ -2,29 +2,100 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-enum main_command {
+/*
+    Enum describing the possible commands
+    the master can send to the workers
+*/
+enum master_command {
     WAIT,
     PROCESS_VALUE,
     TERMINATE
 };
 
+/*
+    Enum describing the possible states
+    a worker can be at any time
+*/
 enum worker_state {
     AVAILABLE,
     WORKING,
     TERMINATING
 };
 
+/*
+    Struct that describes a worker.
+
+    Fields:
+    int id - The id of the worker.
+    enum worker_state state - The current state of the worker.
+    enum master_command command - The last command the master has send to the worker.
+    long long int value_to_process - The value that must be processed by the worker 
+                                     to determine if it is a prime number or not.
+*/
 typedef struct worker {
     int id;
     enum worker_state state;
-    enum main_command command;
+    enum master_command command;
     long long int value_to_process;
 } worker_t;
 
+/*
+    Checks whether the workers in the given array,
+    have all terminated or currently terminating.
+
+    Parameters: 
+    worker_t *workers - the array of workers to check.
+    int N - the size of the array workers.
+    Returns:
+    1, if all workers have terminated or currently terminating or
+    0, if there is at least one worker that hasn't terminated.
+*/
 int check_terminated_workers(const worker_t *workers, int N);
-int check_available_worker(const worker_t *workers, int N);
-int create_workers(worker_t **workers, int N);
+
+/*
+    Finds an available worker in the given array of workers.
+
+    Parameters: 
+    worker_t *workers - the array of workers to search.
+    int N - the size of the array workers.
+    Returns:
+    -1, if there isn't an available worker in the array or
+    an integer that belongs to the id of the available worker found.
+*/
+int get_available_worker(const worker_t *workers, int N);
+
+/*
+    Creates an array workers with the given
+    size and stores it at the given pointer.
+
+    Parameters:
+    worker_t **workers - the pointer to the array of workers.
+    int N - the size of the array to create.
+*/
+void create_workers(worker_t **workers, int N);
+
+/*
+    The function to run on each worker thread.
+    Updates the status of the worker and waits to receive
+    new commands from the master.
+
+    Parameters: 
+    void *arg - a pointer to the worker_t struct that belongs to this thread.
+    Returns: 
+    NULL every time since the return value is always ignored.
+*/
 void *run_worker(void *arg);
+
+/*
+    Checks if a number is prime using
+    a very naive approach.
+
+    Parameters: 
+    long long int N - the number to check
+    Returns:
+    1, if the number N is prime.
+    0, if the number N is not prime.
+*/
 int is_prime(long long int N);
 
 int main(const int argc, char *argv[]) {
@@ -44,9 +115,9 @@ int main(const int argc, char *argv[]) {
             break;
 
         // wait until you find an available worker
-        int available_worker_id = check_available_worker(workers, N);
+        int available_worker_id = get_available_worker(workers, N);
         while(available_worker_id == -1) {
-            available_worker_id = check_available_worker(workers, N);
+            available_worker_id = get_available_worker(workers, N);
         }
 
         worker_t *worker = workers + available_worker_id;
@@ -75,8 +146,11 @@ void *run_worker(void *arg) {
             self->state = TERMINATING;
             break;
         }
-        // reset command before setting the state of the worker
-        // so that the master doesn't get his commands overwritten by the worker
+        /*
+        Resetting the command of the master before setting the state of the worker
+        so that the worker doesn't repeat the processing of the same value
+        and the master doesn't get its command overwritten.
+        */
         self->command = WAIT;
         self->state = WORKING;
         printf("Worker #%d: %lld is %sprime\n", self->id, self->value_to_process, is_prime(self->value_to_process) ? "" : "not ");
@@ -92,7 +166,7 @@ int check_terminated_workers(const worker_t *workers, const int N) {
     return 1;
 }
 
-int check_available_worker(const worker_t *workers, const int N) {
+int get_available_worker(const worker_t *workers, const int N) {
     for (int i = 0; i < N; i++) {
         if (workers[i].state == AVAILABLE)
             return i;
@@ -100,7 +174,7 @@ int check_available_worker(const worker_t *workers, const int N) {
     return -1;
 }
 
-int create_workers(worker_t **workers, const int N) {
+void create_workers(worker_t **workers, const int N) {
     *workers = malloc(N * sizeof(worker_t));
 
     pthread_t thread;
@@ -113,7 +187,6 @@ int create_workers(worker_t **workers, const int N) {
         if (res)
             printf("Failed to create worker %d: %d", i, res);
     }
-    return 0;
 }
 
 int is_prime(const long long int N) {

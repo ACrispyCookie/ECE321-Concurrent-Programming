@@ -1,3 +1,4 @@
+#include <iso646.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -10,7 +11,11 @@ typedef struct sort_info {
     int running;
 } sort_info_t;
 
+#define TOTAL_NODES 2047
+
 static char *file_name;
+volatile int started = 0;
+volatile int completed = 0;
 
 void *run_thread(void *arg);
 void create_threads_rec(int start, int end);
@@ -46,6 +51,8 @@ int main(const int argc, char *argv[]) {
 
 void *run_thread(void *arg) {
     sort_info_t *info = arg;
+    ++started;
+    printf("Started: %d/%d\n", started, TOTAL_NODES);
     const int size = info->end - info->start + 1;
     if (size <= 64) {
         int *buffer = malloc(size * sizeof(int));
@@ -53,6 +60,8 @@ void *run_thread(void *arg) {
         qsort(buffer, size, sizeof(int), qsort_comparator);
         write_to_file(buffer, info->start, size);
         free(buffer);
+        ++completed;
+        printf("Completed: %d/%d\n", completed, TOTAL_NODES);
         info->running = 0;
         return NULL;
     }
@@ -60,6 +69,8 @@ void *run_thread(void *arg) {
     const int mid = size / 2;
     create_threads_rec(info->start, info->end);
     merge_arrays(info->start, info->start + mid, info->start, mid, size - mid);
+    ++completed;
+    printf("Completed: %d/%d\n", completed, TOTAL_NODES);
     info->running = 0;
     return NULL;
 }

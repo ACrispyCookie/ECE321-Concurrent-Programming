@@ -3,11 +3,45 @@
 #include <pthread.h>
 #include <stdlib.h>
 
+// Pipe array
 static pipe_t **pipes = NULL;
 static unsigned int pipe_count = 0;
 
+/*
+    Internal function to add a new pipe_t to the 
+    pipe array and assign an id to it.
+
+    Parameters:
+    pipe_t *pipe - A pointer to the pipe to be added.
+    Returns:
+    0 for success or 
+    -1 if it failed to add the pipe to the array.
+*/
 int pipe_add(pipe_t *pipe);
+
+/*
+    Internal function to get a pipe using its id
+    by searching inside the pipe array.
+
+    Parameters:
+    unsigned int pipe_id - The id of the pipe to look for in the array.
+    int *pipe_index - Optional parameter to get the index of the pipe, if found.
+    Returns:
+    A pointer to the pipe_t struct with the matching pipe_id.
+*/
 pipe_t *pipe_get(unsigned int pipe_id, int *pipe_index);
+
+/*
+    Internal function to remove a pipe with
+    the given id from the pipe array.
+
+    Parameters:
+    unsigned int pipe_id - The id of the pipe to remove from the array.
+    Returns:
+    0 for success, 
+    -1 if it failed to remove the pipe from the array or 
+    1 if a pipe with the given id doesn't exist in the array.
+*/
 int pipe_remove(unsigned int pipe_id);
 
 unsigned int pipe_open(const int size) {
@@ -31,8 +65,9 @@ int pipe_write(unsigned int p, char c) {
         return -1;
 
     ring_buffer_t *cur_buffer = cur_pipe->ring_buffer;
+    //if the write pointer is right behind the read pointer
     while ((cur_buffer->write + 1) % cur_buffer->size == cur_buffer->read) {
-        // wait
+        // active waiting
     }
 
     cur_buffer->buffer[cur_buffer->write] = c;
@@ -59,7 +94,7 @@ int pipe_read(unsigned int p, char *c) {
     ring_buffer_t *cur_buffer = cur_pipe->ring_buffer;
     // if there is nothing to read on the pipe and the pipe is open for writing
     while ((cur_buffer->read + 1) % cur_buffer->size == cur_buffer->write && cur_pipe->open_to_write) {
-        // wait
+        // active waiting
     }
 
     // if the pipe is closed for writing and there is still nothing to read
@@ -104,6 +139,8 @@ int pipe_remove(const unsigned int pipe_id) {
 
     int pipe_index;
     pipe_t *to_remove = pipe_get(pipe_id, &pipe_index);
+    if (to_remove == NULL)
+        return 1;
     free(to_remove->ring_buffer->buffer);
     free(to_remove->ring_buffer);
     free(to_remove);
