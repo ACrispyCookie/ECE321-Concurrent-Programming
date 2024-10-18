@@ -40,6 +40,7 @@ while getopts ":tiv" opt; do
     esac
 done
 
+echo "Checking diff between original file and copied files..."
 if (diff -q $FILE "$FILE.copy" > /dev/null) && (diff -q $FILE "$FILE.copy2" > /dev/null)
 then
     echo "PASS! The copied file is the same with the original file!"

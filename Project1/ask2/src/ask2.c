@@ -100,7 +100,7 @@ int is_prime(long long int N);
 
 int main(const int argc, char *argv[]) {
     if (argc != 2) {
-        printf("Usage: ./ask2 <number of workers>\n");
+        printf("Usage: %s <number of workers>\n", argv[0]);
         return -1;
     }
     const int N = atoi(argv[1]);

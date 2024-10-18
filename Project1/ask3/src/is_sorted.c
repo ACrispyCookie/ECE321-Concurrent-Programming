@@ -1,11 +1,18 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+/*
+    Checks if a file of integers is sorted or not.
+
+    Returns:
+    1, if the file is not sorted or
+    0, if the file is sorted.
+*/
 bool is_sorted(FILE *file);
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
-        printf("Usage: ./is_sorted <filename>");
+        printf("Usage: %s <filename>", argv[0]);
         return -1;
     }
 
@@ -24,9 +31,9 @@ bool is_sorted(FILE *file) {
         fread(&nextInt, sizeof(int), 1, file);
         if (curInt > nextInt) {
             printf("File not sorted, found %d, after %d\n", nextInt, curInt);
-            return 0;
+            return 1;
         }
     }
 
-    return 1;
+    return 0;
 }

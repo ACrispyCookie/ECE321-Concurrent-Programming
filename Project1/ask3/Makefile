@@ -1,3 +1,5 @@
+all: ./target/ask3 ./target/bin_creator ./target/is_sorted
+
 ./target/ask3: ./src/ask3.c
 	gcc -Wall -g ./src/ask3.c -o ./target/ask3
 

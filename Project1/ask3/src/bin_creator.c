@@ -2,9 +2,13 @@
 #include <stdlib.h>
 #include <time.h>
 
+/*
+    Creates the file if it doesn't exist and writes the given number of random
+    integers to it.
+*/
 int main(int argc, char *argv[]) {
     if (argc != 3) {
-        printf("Usage: ./bin_creator <filename> <number of integers>\n");
+        printf("Usage: %s <filename> <number of integers>\n", argv[0]);
     }
 
     const char *filename = argv[1];
