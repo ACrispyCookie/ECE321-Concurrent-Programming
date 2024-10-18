@@ -1,0 +1,11 @@
+Metafrash:
+Gia thn metafrash xrhsimopoieitai ena aplo arxeio Makefile
+to opoio kanei compile kai link to arxeio ask2.c
+
+Dokimh:
+To programma dokimazetai me thn xrhsh tou "run_test.sh" to opoio
+exei 3 diaforetika test:
+1. 2 workers me input 2^31 - 1 2 fores kai meta mikroteroi arithmoi
+2. 4 workers me input 2^31 - 1 2 fores kai oso oi prwtoi dyo einai blocked
+dokimh mikroterwn arithmwn gia na doume pou anateithetai h douleia
+3. 4 workers me 50 tyxaia inputs

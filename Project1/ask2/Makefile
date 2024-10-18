@@ -1,2 +1,2 @@
-ask2: ask2.c
-	gcc -Wall -g ./ask2.c -o ask2
+./target/ask2: ./src/ask2.c
+	gcc -Wall -g ./src/ask2.c -o ./target/ask2

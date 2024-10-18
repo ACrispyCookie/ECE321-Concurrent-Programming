@@ -1,13 +1,13 @@
 #!/bin/bash
 
-TEST="./target/ask3"
+TEST="./target/ask2"
 
 usage() {
     echo "Usage: $0 [option]"
     echo "Options:"
-    echo "  -t    Run test with a text file"
-    echo "  -i    Run test with an image file"
-    echo "  -v    Run test with a video file"
+    echo "  -1    Run test with the 1st test"
+    echo "  -2    Run test with the 2nd test"
+    echo "  -3    Run test with the 3rd test"
     exit 1
 }
 
@@ -15,22 +15,19 @@ if [ $# -eq 0 ]; then
     usage
 fi
 
-while getopts ":tiv" opt; do
+while getopts ":123" opt; do
     case $opt in
-        t)
-            echo "Running with a text file"
-            FILE="./resources/bigfile.txt"
-            $TEST $FILE
+        1)
+            echo "Running with the 1st test"
+            $TEST 2 < ./tests/1.txt
             ;;
-        i)
-            echo "Running with an image file"
-            FILE="./resources/img1.jpg"
-            $TEST $FILE
+        2)
+            echo "Running with the 2nd test"
+            $TEST 4 < ./tests/2.txt
             ;;
-        v)
-            echo "Running with a video file"
-            FILE="./resources/vid.mp4"
-            $TEST $FILE
+        3)
+            echo "Running with the 3rd test"
+            $TEST 4 < ./tests/3.txt
             ;;
         \?)
             echo "Invalid option: -$OPTARG"
@@ -38,10 +35,3 @@ while getopts ":tiv" opt; do
             ;;
     esac
 done
-
-if (diff -q $FILE "$FILE.copy" > /dev/null) && (diff -q $FILE "$FILE.copy2" > /dev/null)
-then
-    echo "PASS! The copied file is the same with the original file!"
-else
-    echo "FAIL! The copied file is different from the original file!"
-fi
