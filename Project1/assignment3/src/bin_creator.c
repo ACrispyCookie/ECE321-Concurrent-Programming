@@ -1,0 +1,23 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+/*
+    Creates the file if it doesn't exist and writes the given number of random
+    integers to it.
+*/
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        printf("Usage: %s <filename> <number of integers>\n", argv[0]);
+    }
+
+    const char *filename = argv[1];
+    FILE *file = fopen(filename, "w");
+    const int N = atoi(argv[2]);
+    srand(time(NULL));
+    for (int i = 0; i < N; i++) {
+        int r = rand();
+        fwrite(&r, sizeof(int), 1, file);
+    }
+    fclose(file);
+}
