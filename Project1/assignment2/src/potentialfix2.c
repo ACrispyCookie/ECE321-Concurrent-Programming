@@ -141,11 +141,10 @@ void *run_worker(void *arg) {
     worker_t *self = arg;
     while(1) {
         self->state = AVAILABLE;
-        while (self->command == WAIT) {
-            if (TERMINATE == 1) {
-                self->state = TERMINATING;
-                break;
-            }
+        while (self->command == WAIT && TERMINATE != 1) { }
+        if (TERMINATE == 1) {
+            self->state = TERMINATING;
+            break;
         }
 
         /*

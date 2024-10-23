@@ -1,2 +1,2 @@
-./target/ask2: ./src/ask2.c
-	gcc -Wall -g ./src/ask2.c -o ./target/ask2
+./target/ask2: ./src/potentialfix1.c
+	gcc -Wall -g ./src/potentialfix1.c -o ./target/ask2
