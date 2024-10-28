@@ -1,26 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-
-/*
-    Enum describing the possible commands
-    the master can send to the workers
-*/
-enum master_command {
-    WAIT,
-    PROCESS_VALUE,
-    TERMINATE
-};
-
-/*
-    Enum describing the possible states
-    a worker can be at any time
-*/
-enum worker_state {
-    AVAILABLE,
-    WORKING,
-    TERMINATING
-};
+#include <stdbool.h>
+#include "../../assingment1/mysem.h"
 
 /*
     Struct that describes a worker.
@@ -34,10 +16,11 @@ enum worker_state {
 */
 typedef struct worker {
     int id;
-    enum worker_state state;
-    enum master_command command;
+    mysem_t *main_sem;
+    mysem_t *curr_sem;
     long long int value_to_process;
-    int values_processed;
+    bool blocked;
+    bool terminate;
 } worker_t;
 
 /*
@@ -73,7 +56,7 @@ int get_available_worker(const worker_t *workers, int N);
     worker_t **workers - the pointer to the array of workers.
     int N - the size of the array to create.
 */
-void create_workers(worker_t **workers, int N);
+void create_workers(worker_t **workers, int N, mysem_t **sems);
 
 /*
     The function to run on each worker thread.
@@ -99,6 +82,8 @@ void *run_worker(void *arg);
 */
 int is_prime(long long int N);
 
+void create_semaphores(mysem_t **sems, const int N, const int value);
+
 int main(const int argc, char *argv[]) {
     if (argc != 2) {
         printf("Usage: %s <number of workers>\n", argv[0]);
@@ -107,85 +92,92 @@ int main(const int argc, char *argv[]) {
     const int N = atoi(argv[1]);
     long long int input;
 
+    mysem_t *sems;
+    create_semaphores(&sems, N+1, 0);
     worker_t *workers;
-    create_workers(&workers, N);
+    create_workers(&workers, N, &sems);
 
     while (1) {
         const int read_result = scanf("%lld", &input);
         if (read_result == EOF)
             break;
+        
+        // down Main sem
+        printf("Main: BLOCKED himself. Main sem is %d\n", semctl(sems->id, 0, GETVAL));
+        mysem_down(sems);
+        int available_workers_id = get_available_worker(workers, N);
+        // wake up available worker
+        int res = mysem_up(sems + available_workers_id + 1);
+        if (!res)
+            printf("MAIN: lost up call on sem %d\n", available_workers_id);
+        else
+            printf("Main: Wake up worker #%d. It's sem is %d\n", available_workers_id, semctl((sems+available_workers_id+1)->id, 0, GETVAL));
 
-        // wait until you find an available worker
-        int available_worker_id = get_available_worker(workers, N);
-        while(available_worker_id == -1) {
-            available_worker_id = get_available_worker(workers, N);
-        }
-
-        worker_t *worker = workers + available_worker_id;
-        // notify worker to process value and wait for it to start processing
+        worker_t *worker = workers + available_workers_id;
         worker->value_to_process = input;
-        worker->command = PROCESS_VALUE;
-        int processed = worker->values_processed;
-        // wait for the worker to start working
-        while (worker->state == AVAILABLE && worker->values_processed == processed) {}
     }
 
     for (int i = 0; i < N; i++)
-        workers[i].command = TERMINATE;
-    // wait for all workers to terminate
-    while(!check_terminated_workers(workers, N)) {}
+        workers[i].terminate = true;
+
+    // wake up all workers to terminate
+    for (int i = 1; i < N+1; i++) {
+        mysem_up(&(sems[i]));
+    }
+    
+    // block yourself untill all workers wake you up 
+    for (int i = 1; i < N+1; i++) {
+        mysem_down(sems);
+    }
 
     free(workers);
+    free(sems);
     return 0;
 }
 
 void *run_worker(void *arg) {
     worker_t *self = arg;
     while(1) {
-        self->state = AVAILABLE;
-        while (self->command == WAIT) {}
-        if (self->command == TERMINATE) {
-            self->state = TERMINATING;
-            break;
-        }
-        /*
-        Resetting the command of the master before setting the state of the worker
-        so that the worker doesn't repeat the processing of the same value
-        and the master doesn't get its command overwritten.
-        */
-        self->command = WAIT;
-        self->state = WORKING;
-        printf("Worker #%d: %lld is %sprime\n", self->id, self->value_to_process, is_prime(self->value_to_process) ? "" : "not ");
-        self->values_processed = self->values_processed + 1;
-    }
-    return NULL;
-}
+        self->blocked = true;
+        // wake up Main
+        int res = mysem_up(self->main_sem);
+        if (!res)
+            printf("Worker #%d: lost up call on Main sem\n", self->id);
+        else
+            printf("Worker #%d: Wake up Main. Main sem is %d\n", self->id, semctl(self->main_sem->id, 0, GETVAL));
 
-int check_terminated_workers(const worker_t *workers, const int N) {
-    for (int i = 0; i < N; i++) {
-        if (workers[i].state != TERMINATING)
-            return 0;
+        // block your self
+        printf("Worker #%d: BLOCKED himself. Curr sem is %d\n", self->id, semctl(self->curr_sem->id, 0, GETVAL));
+        mysem_down(self->curr_sem);
+        if (self->terminate) 
+            break;
+
+        printf("Worker #%d: %lld is %sprime\n", self->id, self->value_to_process, is_prime(self->value_to_process) ? "" : "not ");
     }
-    return 1;
+
+    mysem_up(self->main_sem);
+    return NULL;
 }
 
 int get_available_worker(const worker_t *workers, const int N) {
     for (int i = 0; i < N; i++) {
-        if (workers[i].state == AVAILABLE)
+        if (workers[i].blocked)
             return i;
     }
     return -1;
 }
 
-void create_workers(worker_t **workers, const int N) {
+void create_workers(worker_t **workers, const int N, mysem_t **sems) {
     *workers = malloc(N * sizeof(worker_t));
 
     pthread_t thread;
     for (int i = 0; i < N; i++) {
         (*workers)[i].id = i;
-        (*workers)[i].state = AVAILABLE;
         (*workers)[i].value_to_process = 0;
-        (*workers)[i].command = WAIT;
+        (*workers)[i].terminate = false;
+        (*workers)[i].blocked = false;
+        (*workers)[i].main_sem = *sems;
+        (*workers)[i].curr_sem = *sems + (*workers)[i].id + 1;
         const int res = pthread_create(&thread, NULL, run_worker, &(*workers)[i]);
         if (res)
             printf("Failed to create worker %d: %d", i, res);
@@ -199,4 +191,14 @@ int is_prime(const long long int N) {
         }
     }
     return 1;
+}
+
+void create_semaphores(mysem_t **sems, const int N, const int value) {
+    *sems = malloc(N * sizeof(mysem_t));
+
+    for (int i = 0; i < N; i++) {
+        (*sems)[i].initialized = 0;
+        (*sems)[i].id = semget(IPC_PRIVATE, 1, S_IRWXU);
+        mysem_init(&(*sems)[i], value);
+    }
 }
