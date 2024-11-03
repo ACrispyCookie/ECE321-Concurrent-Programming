@@ -1,8 +1,5 @@
 #include "mysem.h"
 
-int thread_count = 0;
-int blocked_count = 0;
-
 typedef struct thred_info {
   mysem_t sem;
   pthread_t ptid;
@@ -12,12 +9,12 @@ void init_out(int res, int semid);
 void destroy_out(int res, int semid);
 void down_out(int res, int semid, long unsigned int ptid);
 void up_out(int res, int semid, long unsigned int ptid);
-void *thread(void *arg);
+void *thread1(void *arg);
+void *thread2(void *arg);
 pthread_t init_thread(mysem_t sem);
 
 int main(int argc, char *argv[]) {
   mysem_t sem;
-  pthread_t ptid1, ptid2, ptid3, ptid4;
 
   sem.initialized = 0;
   sem.id = semget(IPC_PRIVATE, 1, S_IRWXU);
@@ -25,59 +22,74 @@ int main(int argc, char *argv[]) {
   int val = mysem_init(&sem, 1);
   init_out(val, sem.id);
 
-  ptid1 = init_thread(sem);
-  ptid2 = init_thread(sem);
-  ptid3 = init_thread(sem);
-  ptid4 = init_thread(sem);
+  thread_info_t *p1 = (thread_info_t *) malloc(sizeof(thread_info_t));
+  p1->sem = sem;
+  int rc = pthread_create(&(p1->ptid), NULL, (void *)thread1, p1);
 
-  pthread_join(ptid1, NULL);
-  pthread_join(ptid2, NULL);
-  pthread_join(ptid3, NULL);
-  pthread_join(ptid4, NULL);
+  thread_info_t *p2 = (thread_info_t *) malloc(sizeof(thread_info_t));
+  p2->sem = sem;
+  rc = pthread_create(&(p2->ptid), NULL, (void *)thread1, p2);
+
+  thread_info_t *p3 = (thread_info_t *) malloc(sizeof(thread_info_t));
+  p3->sem = sem;
+  rc = pthread_create(&(p3->ptid), NULL, (void *)thread2, p3);
+
+  thread_info_t *p4 = (thread_info_t *) malloc(sizeof(thread_info_t));
+  p4->sem = sem;
+  rc = pthread_create(&(p4->ptid), NULL, (void *)thread2, p4);
+
+  pthread_join(p1->ptid, NULL);
+  pthread_join(p2->ptid, NULL);
+  pthread_join(p3->ptid, NULL);
+  pthread_join(p4->ptid, NULL);
 
   val = mysem_destroy(&sem);
   destroy_out(val, sem.id);
 
+  free(p1);
+  free(p2);
   return 0;
 }
 
-pthread_t init_thread(mysem_t sem) {
-  thread_info_t *p;
+// pthread_t init_thread(mysem_t sem) {
+//   thread_info_t *p;
 
-  p = (thread_info_t *) malloc(sizeof(thread_info_t));
-  p->sem = sem;
+//   p = (thread_info_t *) malloc(sizeof(thread_info_t));
+//   p->sem = sem;
 
-  int rc = pthread_create(&(p->ptid), NULL, (void *)thread, p);
-  if (rc) {
-    printf("Error creating thread\n");
-//    exit(1);
-  }
-  else {
-    printf("Thread %ld created successfully\n", p->ptid);
-    thread_count++;
-  }
+//   int rc = pthread_create(&(p->ptid), NULL, (void *)thread, p);
+//   if (rc) {
+//     printf("Error creating thread\n");
+// //    exit(1);
+//   }
+//   else {
+//     printf("Thread %ld created successfully\n", p->ptid);
+//   }
 
-  return p->ptid;
+//   return p->ptid;
+// }
+
+void *thread1(void *arg) {
+  thread_info_t *info = (thread_info_t *)arg;
+  printf("Thread %ld STARTED.\n", info->ptid);
+
+  printf("Thread %ld before down() with sem %d \n", info->ptid, semctl(info->sem.id, 0, GETVAL));
+  int val = mysem_down(&(info->sem), info->ptid);
+  printf("Thread %ld after down() with sem %d \n", info->ptid, semctl(info->sem.id, 0, GETVAL));
+  down_out(val, info->sem.id, info->ptid);
+
+  return NULL;
 }
 
-void *thread(void *arg) {
+void *thread2(void *arg) {
   thread_info_t *info = (thread_info_t *)arg;
+  printf("Thread %ld STARTED.\n", info->ptid);
 
-  printf("Thread %ld BLOCKED\n", info->ptid);
-  printf("-----------------\n");
-  int val = mysem_down(&(info->sem));
+  printf("Thread %ld before up() with sem %d \n", info->ptid, semctl(info->sem.id, 0, GETVAL));
+  int val = mysem_up(&(info->sem), info->ptid);
+  printf("Thread %ld after up() with sem %d \n", info->ptid, semctl(info->sem.id, 0, GETVAL));
+  up_out(val, info->sem.id, info->ptid);
 
-  printf("Thread %ld in CS with sem %d\n", info->ptid, semctl(info->sem.id, 0, GETVAL));
-//  down_out(val, info.sem.id, info.ptid);
-  printf("Thread %ld in CS\n", info->ptid);
-  sleep(5);
-
-  val = mysem_up(&(info->sem));
-  printf("-----------------\n");
-  printf("Thread %ld out of CS with sem %d\n", info->ptid, semctl(info->sem.id, 0, GETVAL));
-//  up_out(val, info.sem.id, info.ptid);
-
-  free(info);
   return NULL;
 }
 
