@@ -74,7 +74,7 @@ void *thread1(void *arg) {
   printf("Thread %ld STARTED.\n", info->ptid);
 
   printf("Thread %ld before down() with sem %d \n", info->ptid, semctl(info->sem.id, 0, GETVAL));
-  int val = mysem_down(&(info->sem), info->ptid);
+  int val = mysem_down(&(info->sem));
   printf("Thread %ld after down() with sem %d \n", info->ptid, semctl(info->sem.id, 0, GETVAL));
   down_out(val, info->sem.id, info->ptid);
 
@@ -86,7 +86,7 @@ void *thread2(void *arg) {
   printf("Thread %ld STARTED.\n", info->ptid);
 
   printf("Thread %ld before up() with sem %d \n", info->ptid, semctl(info->sem.id, 0, GETVAL));
-  int val = mysem_up(&(info->sem), info->ptid);
+  int val = mysem_up(&(info->sem));
   printf("Thread %ld after up() with sem %d \n", info->ptid, semctl(info->sem.id, 0, GETVAL));
   up_out(val, info->sem.id, info->ptid);
 

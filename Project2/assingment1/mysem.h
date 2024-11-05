@@ -18,8 +18,10 @@ typedef struct mysem {
 } mysem_t;
 
 int mysem_init(mysem_t *s, int n);
-int mysem_down(mysem_t *s, pthread_t ptid);
-int mysem_up(mysem_t *s, pthread_t ptid);
+int mysem_down(mysem_t *s);
+int mysem_up(mysem_t *s);
 int mysem_destroy(mysem_t *s);
+bool priority(int self, int comp);
+int max(int *buffer, int size);
 
 #endif
