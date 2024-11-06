@@ -1,6 +1,5 @@
 #include "mysem.h"
 
-static pthread_mutex_t mutex;
 static int tickets[100] = {0};
 static bool taking[100] = {false};
 static int thread_count = 0;
@@ -9,9 +8,9 @@ int mysem_init(mysem_t *s, int n) {
   if(s->initialized == 1)
     return -1;
   if (!(n == 1 || n == 0))
-      return 0;
-
-  pthread_mutex_init(&mutex, NULL);
+    return 0;
+  
+  s->id = semget(IPC_PRIVATE, 1, S_IRWXU);
   semctl(s->id, 0, SETVAL, n);
   s->initialized = 1;
 
@@ -82,7 +81,6 @@ int mysem_destroy(mysem_t *s) {
   if(!s->initialized || semctl(s->id, 0, GETVAL) == -1)
     return -1;
 
-  pthread_mutex_destroy(&mutex);
   semctl(s->id, 0, IPC_RMID);
   return 1;
 }

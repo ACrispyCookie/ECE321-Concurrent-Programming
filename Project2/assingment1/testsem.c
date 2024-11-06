@@ -16,9 +16,6 @@ pthread_t init_thread(mysem_t sem);
 int main(int argc, char *argv[]) {
   mysem_t sem;
 
-  sem.initialized = 0;
-  sem.id = semget(IPC_PRIVATE, 1, S_IRWXU);
-
   int val = mysem_init(&sem, 1);
   init_out(val, sem.id);
 
