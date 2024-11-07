@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
-#include "../assingment1/mysem.h"
+#include "../assingment1/src/mysem.h"
 
 #define MAX_CARS 5
 

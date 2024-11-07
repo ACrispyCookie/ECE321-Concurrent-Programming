@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "../../assignment_1/src/mysem.h"
+#include "../../assignment1/src/mysem.h"
 #include <pthread.h>
 
 /*
