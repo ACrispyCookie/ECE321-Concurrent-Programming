@@ -9,6 +9,7 @@
 int mysem_add(mysem_t *s, int id);
 int mysem_remove(const mysem_t *s);
 int mysem_get(const mysem_t *s);
+void print_sems();
 
 static mysem_t **sems;
 static unsigned int sems_count = 0;
@@ -28,6 +29,7 @@ int mysem_init(mysem_t *s, int n) {
     semctl(s->id, 0, SETVAL, n);
     s->val = n;
     pthread_mutex_init(&s->lock, NULL);
+    //print_sems();
 
     return 1;
 }
@@ -77,8 +79,7 @@ int mysem_destroy(const mysem_t *s) {
 
 int mysem_add(mysem_t *s, const int id) {
     s->id = id;
-    sems_count++;
-    mysem_t **new_sems = realloc(sems, sems_count * sizeof(mysem_t *));
+    mysem_t **new_sems = realloc(sems, ++sems_count * sizeof(mysem_t *));
     if (new_sems == NULL)
         return -1;
     sems = new_sems;
@@ -91,7 +92,7 @@ int mysem_remove(const mysem_t *s) {
         return 1;
 
     int sem_index = mysem_get(s);
-    if (sem_index != -1)
+    if (sem_index == -1)
         return 1;
     sems[sem_index] = sems[sems_count - 1];
     mysem_t **new_sems = realloc(sems, --sems_count * sizeof(mysem_t *));
@@ -107,4 +108,13 @@ int mysem_get(const mysem_t *s) {
             return i;
     }
     return -1;
+}
+
+void print_sems() {
+    printf("-------------------\n");
+    for (int i = 0; i < sems_count; i++) {
+        mysem_t *sem = sems[i];
+        printf("id: %d, val: %d\n", sem->id, sem->val);
+    }
+    printf("-------------------\n");
 }
