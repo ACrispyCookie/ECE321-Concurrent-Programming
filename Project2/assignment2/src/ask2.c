@@ -24,13 +24,11 @@ enum master_command {
                                      to determine if it is a prime number or not.
 */
 typedef struct worker {
-    int id;
     pthread_t thread;
     mysem_t *worker_queue;
-    mysem_t *m_wait_available;
-    mysem_t *w_wait_command;
-    enum master_command command;
-    long long int value_to_process;
+    mysem_t *main_sleep;
+    enum master_command *command;
+    long long int *value_to_process;
 } worker_t;
 
 /*
@@ -41,7 +39,7 @@ typedef struct worker {
     worker_t **workers - the pointer to the array of workers.
     int N - the size of the array to create.
 */
-void create_workers(worker_t **workers, const int N, mysem_t *worker_queue, mysem_t *m_wait_available, mysem_t *w_wait_command);
+void create_workers(worker_t **workers, const int N, mysem_t *worker_queue, mysem_t *main_sleep, enum master_command *command, long long int *value_to_process);
 
 /*
     The function to run on each worker thread.
@@ -67,8 +65,6 @@ void *run_worker(void *arg);
 */
 int is_prime(long long int N);
 
-static worker_t *available_worker;
-
 int main(const int argc, char *argv[]) {
     if (argc != 2) {
         printf("Usage: %s <number of workers>\n", argv[0]);
@@ -78,34 +74,33 @@ int main(const int argc, char *argv[]) {
     long long int input;
 
     worker_t *workers;
-    mysem_t m_wait_available, w_wait_command, worker_queue;
-    m_wait_available.id = -1; w_wait_command.id = -1; worker_queue.id = -1;
-    mysem_init(&m_wait_available, 0);
+    mysem_t main_sleep, worker_queue;
+    main_sleep.id = -1; worker_queue.id = -1;
+    mysem_init(&main_sleep, 0);
     mysem_init(&worker_queue, 0);
-    mysem_init(&w_wait_command, 0);
-    create_workers(&workers, N, &worker_queue, &m_wait_available, &w_wait_command);
+    enum master_command command = PROCESS_VALUE;
+    long long int value_to_process = 0;
+
+    create_workers(&workers, N, &worker_queue, &main_sleep, &command, &value_to_process);
 
     while (1) {
         const int read_result = scanf("%lld", &input);
         if (read_result == EOF)
             break;
+        value_to_process = input;
 
-        // wait until you find an available worker
         int ret = mysem_up(&worker_queue);
-        mysem_down(&m_wait_available);
-        // notify worker to process value and wait for it to start processing
-        available_worker->value_to_process = input;
-        available_worker->command = PROCESS_VALUE;
-        ret = mysem_up(&w_wait_command);
+        if (!ret)
+            printf("Lost up call on main on worker_queue\n");
+        mysem_down(&main_sleep);
     }
 
+    command = TERMINATE;
     for (int i = 0; i < N; i++) {
         int ret = mysem_up(&worker_queue);
-        mysem_down(&m_wait_available);
-        available_worker->command = TERMINATE;
-        ret = mysem_up(&w_wait_command);
-        //giati den doulevei xwris auto?
-        //pthread_join(available_worker->thread, NULL);
+        if (!ret)
+            printf("Lost up call on main on worker_queue\n");
+        mysem_down(&main_sleep);
     }
 
     free(workers);
@@ -116,28 +111,33 @@ void *run_worker(void *arg) {
     worker_t *self = arg;
     while(1) {
         mysem_down(self->worker_queue);
-        available_worker = self;
-        int ret = mysem_up(self->m_wait_available);
-        mysem_down(self->w_wait_command);
+        long long int value = *self->value_to_process;
+        enum master_command command = *self->command;
         
-        if (self->command == TERMINATE) {
-            printf("Worker #%d: terminating...\n", self->id);
+        if (command  == TERMINATE) {
+            printf("Worker #%ld: terminating...\n", self->thread);
+            int ret = mysem_up(self->main_sleep);
+            if (!ret)
+                printf("Lost up call on main on main_sleep\n");
             break;
         }
-        printf("Worker #%d: %lld is %sprime\n", self->id, self->value_to_process, is_prime(self->value_to_process) ? "" : "not ");
+
+        int ret = mysem_up(self->main_sleep);
+        if (!ret)
+            printf("Lost up call on main on main_sleep\n");
+        printf("Worker #%ld: %lld is %sprime\n", self->thread, value, is_prime(value) ? "" : "not ");
     }
     return NULL;
 }
 
-void create_workers(worker_t **workers, const int N, mysem_t *worker_queue, mysem_t *m_wait_available, mysem_t *w_wait_command) {
+void create_workers(worker_t **workers, const int N, mysem_t *worker_queue, mysem_t *main_sleep, enum master_command *command, long long int *value_to_process) {
     *workers = malloc(N * sizeof(worker_t));
 
     for (int i = 0; i < N; i++) {
-        (*workers)[i].id = i;
         (*workers)[i].worker_queue = worker_queue;
-        (*workers)[i].m_wait_available = m_wait_available;
-        (*workers)[i].w_wait_command = w_wait_command;
-        (*workers)[i].value_to_process = 0;
+        (*workers)[i].main_sleep = main_sleep;
+        (*workers)[i].command = command;
+        (*workers)[i].value_to_process = value_to_process;
         const int res = pthread_create(&((*workers)[i].thread), NULL, run_worker, &(*workers)[i]);
         if (res)
             printf("Failed to create worker %d: %d", i, res);
