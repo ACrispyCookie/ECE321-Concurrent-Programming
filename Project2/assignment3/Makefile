@@ -1,5 +1,5 @@
-ASSIGNMENT3_SRC = ./src/ASSIGNMENT3.c
-ASSIGNMENT3 = ./target/ASSIGNMENT3
+ASSIGNMENT3_SRC = ./src/assignment3.c
+ASSIGNMENT3 = ./target/assignment3
 LIBMYSEM_DIR = ../assignment1/target
 LIBMYSEM = $(LIBMYSEM_DIR)/libmysem.a
 
