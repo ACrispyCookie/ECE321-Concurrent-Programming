@@ -1,5 +1,10 @@
-./target/ask4: ./src/ask4.c ../assignment1/target/libmysem.a
-	gcc -Wall -g ./src/ask4.c -o ./target/ask4 -lpthread -lmysem -L../assignment1/target
+ASSIGNMENT4_SRC = ./src/ASSIGNMENT4.c
+ASSIGNMENT4 = ./target/ASSIGNMENT4
+LIBMYSEM_DIR = ../assignment1/target
+LIBMYSEM = $(LIBMYSEM_DIR)/libmysem.a
 
-clear: ./target/assignment4
-	rm -rf ./target/assignment4
+$(ASSIGNMENT4): $(ASSIGNMENT4_SRC) $(LIBMYSEM)
+	gcc -Wall -g $(ASSIGNMENT4_SRC) -o $(ASSIGNMENT4) -lpthread -lmysem -L$(LIBMYSEM_DIR)
+
+clear: $(ASSIGNMENT4)
+	rm -rf $(ASSIGNMENT4)

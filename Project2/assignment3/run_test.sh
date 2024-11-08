@@ -1,5 +1,5 @@
 #!/bin/bash
-TEST="./target/ask2"
+TEST="./target/assignment3"
 
 usage() {
     echo "Usage: $0 [option]"
@@ -17,16 +17,19 @@ fi
 while getopts ":123" opt; do
     case $opt in
         1)
+            make
             echo "Running with the 1st test"
-            $TEST 2 < ./tests/1.txt
+            $TEST 1 < ./tests/1.txt
             ;;
         2)
+            make
             echo "Running with the 2nd test"
-            $TEST 4 < ./tests/2.txt
+            $TEST 5 < ./tests/2.txt
             ;;
         3)
+            make
             echo "Running with the 3rd test"
-            $TEST 4 < ./tests/3.txt
+            $TEST 10 < ./tests/3.txt
             ;;
         \?)
             echo "Invalid option: -$OPTARG"

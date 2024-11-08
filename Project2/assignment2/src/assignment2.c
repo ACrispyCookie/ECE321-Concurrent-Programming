@@ -83,7 +83,7 @@ int main(const int argc, char *argv[]) {
 
     create_workers(&workers, N, &worker_queue, &main_sleep, &command, &value_to_process);
 
-    while (1) {
+    while(1) {
         const int read_result = scanf("%lld", &input);
         if (read_result == EOF)
             break;
