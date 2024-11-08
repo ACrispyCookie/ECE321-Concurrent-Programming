@@ -1,5 +1,5 @@
 #!/bin/bash
-TEST="./target/ask2"
+TEST="./target/assignment2"
 
 usage() {
     echo "Usage: $0 [option]"

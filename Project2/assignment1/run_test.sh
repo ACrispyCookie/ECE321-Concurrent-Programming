@@ -1,12 +1,12 @@
 #!/bin/bash
-TEST="./target/test"
+TEST_WITH="./target/test_with_sem"
+TEST_WITHOUT="./target/test_without_sem"
 
 usage() {
     echo "Usage: $0 [option]"
     echo "Options:"
-    echo "  -1    Run test with 100000 as input"
-    echo "  -2    Run test with 1000000 as input"
-    echo "  -3    Run test with 10000000 as input"
+    echo "  -u    Run test without using semaphores"
+    echo "  -s    Run test using semaphores"
     exit 1
 }
 
@@ -14,19 +14,17 @@ if [ $# -eq 0 ]; then
     usage
 fi
 
-while getopts ":123" opt; do
+while getopts ":us" opt; do
     case $opt in
-        1)
-            echo "Running with the 1st test"
-            $TEST 100000
+        u)
+            make test_without
+            echo "Running without using semaphores"
+            $TEST_WITHOUT 100000
             ;;
-        2)
-            echo "Running with the 2nd test"
-            $TEST 1000000
-            ;;
-        3)
-            echo "Running with the 3rd test"
-            $TEST 10000000
+        s)
+            make test_with
+            echo "Running using semaphores"
+            $TEST_WITH 100000
             ;;
         \?)
             echo "Invalid option: -$OPTARG"
