@@ -38,8 +38,11 @@ typedef struct worker {
     Parameters:
     worker_t **workers - the pointer to the array of workers.
     int N - the size of the array to create.
+    worker_t template - worker_t struct that contains shared variables for all workers.
+    Returns:
+    1 on success or -1 on fail
 */
-void create_workers(worker_t **workers, const int N, mysem_t *worker_queue, mysem_t *main_sleep, enum master_command *command, long long int *value_to_process);
+int create_workers(worker_t **workers, const int N, worker_t template);
 
 /*
     The function to run on each worker thread.
@@ -70,9 +73,9 @@ int main(const int argc, char *argv[]) {
         printf("Usage: %s <number of workers>\n", argv[0]);
         return -1;
     }
+
+    //Initialize variables for threads
     const int N = atoi(argv[1]);
-    long long int input;
-    worker_t *workers;
     mysem_t main_sleep, worker_queue;
     main_sleep.id = -1; worker_queue.id = -1;
     mysem_init(&main_sleep, 0);
@@ -80,7 +83,19 @@ int main(const int argc, char *argv[]) {
     enum master_command command = PROCESS_VALUE;
     long long int value_to_process = 0;
 
-    create_workers(&workers, N, &worker_queue, &main_sleep, &command, &value_to_process);
+    //Initialize template for threads
+    worker_t template;
+    template.command = &command;
+    template.main_sleep = &main_sleep;
+    template.worker_queue = &worker_queue;
+    template.value_to_process = &value_to_process;
+
+    //Initialize variables for main
+    long long int input;
+    worker_t **workers = malloc(N * sizeof(worker_t *));
+    if(workers == NULL || create_workers(workers, N, template) == -1) {
+        printf("Error while creating workers!\n");
+    }
 
     while(1) {
         const int read_result = scanf("%lld", &input);
@@ -88,29 +103,32 @@ int main(const int argc, char *argv[]) {
             break;
         value_to_process = input;
 
-        printf("Main woke up next worker.\n");
-        /* tell next worker to start */
+        //Wake up next worker and wait until it starts working
+        printf("Master: Waking up next worker in queue!\n");
         int ret = mysem_up(&worker_queue);
         if (!ret)
             printf("Lost up call on main on worker_queue\n");
-        /* Wait worker to start working */
-        printf("Main waiting for worker to start.\n");
+        printf("Master: Waiting for the worker to start working...\n");
         mysem_down(&main_sleep);
     }
 
+    //Change command to terminate and start waking workers
     command = TERMINATE;
     for (int i = 0; i < N; i++) {
-        printf("Main woke up next worker.\n");
-        /* tell next worker to start */
+        //Wake up next worker and wait until it starts terminating
+        printf("Master: Waking up next worker in queue to terminate!\n");
         int ret = mysem_up(&worker_queue);
         if (!ret)
             printf("Lost up call on main on worker_queue\n");
-        /* wait for worker to indicate termination */
-        printf("Main waiting for worker to terminate.\n");
+        printf("Master: Waiting for the worker to start terminating...\n");
         mysem_down(&main_sleep);
     }
 
-    /* Free workers memory and destroy semaphores */
+    //Wait for worker threads to terminate and free all memory
+    for (int i = 0; i < N; i++) {
+        pthread_join(workers[i]->thread, NULL);
+        free(workers[i]);
+    }
     free(workers);
     mysem_destroy(&main_sleep);
     mysem_destroy(&worker_queue);
@@ -121,45 +139,46 @@ void *run_worker(void *arg) {
     worker_t *self = arg;
 
     while(1) {
-        printf("Worker #%ld waiting main.\n", self->thread);
-        /* wait main to wake you up */
+        //Wait until the master wakes me up and copy command and value to work on.
+        printf("Worker #%ld: Waiting on workers queue...\n", self->thread);
         mysem_down(self->worker_queue);
-        printf("Worker #%ld woke up.\n", self->thread);
+        printf("Worker #%ld: Woke up by master!\n", self->thread);
         long long int value = *self->value_to_process;
         enum master_command command = *self->command;
         
+        //Wake up main and then break from the while loop
         if (command  == TERMINATE) {
-            printf("Worker #%ld: terminating...\n", self->thread);
-            /* tell main that you are terminating */
+            printf("Worker #%ld: Terminating and woke up master!\n", self->thread);
             int ret = mysem_up(self->main_sleep);
             if (!ret)
-                printf("Lost up call on main on main_sleep\n");
+                printf("Lost up call on main_sleep\n");
             break;
         }
 
-        printf("Worker #%ld started working.\n", self->thread);
-        /* tell main you are starting work */
+        //Wake up main and then process the given value
+        printf("Worker #%ld: Started working and woke up master!\n", self->thread);
         int ret = mysem_up(self->main_sleep);
         if (!ret)
-            printf("Lost up call on main on main_sleep\n");
+            printf("Lost up call on main_sleep\n");
         printf("Worker #%ld: %lld is %sprime\n", self->thread, value, is_prime(value) ? "" : "not ");
     }
 
     return NULL;
 }
 
-void create_workers(worker_t **workers, const int N, mysem_t *worker_queue, mysem_t *main_sleep, enum master_command *command, long long int *value_to_process) {
-    *workers = malloc(N * sizeof(worker_t));
-
+int create_workers(worker_t **workers, const int N, worker_t template) {
     for (int i = 0; i < N; i++) {
-        (*workers)[i].worker_queue = worker_queue;
-        (*workers)[i].main_sleep = main_sleep;
-        (*workers)[i].command = command;
-        (*workers)[i].value_to_process = value_to_process;
-        const int res = pthread_create(&((*workers)[i].thread), NULL, run_worker, &(*workers)[i]);
-        if (res)
-            printf("Failed to create worker %d: %d", i, res);
+        worker_t *worker = malloc(sizeof(worker_t));
+        if (worker == NULL) 
+            return -1;
+        workers[i] = worker;
+        worker->command = template.command;
+        worker->main_sleep = template.main_sleep;
+        worker->value_to_process = template.value_to_process;
+        worker->worker_queue = template.worker_queue;
+        pthread_create(&(worker->thread), NULL, run_worker, worker);
     }
+    return 1;
 }
 
 int is_prime(const long long int N) {
