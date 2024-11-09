@@ -89,17 +89,25 @@ int main(const int argc, char *argv[]) {
             break;
         value_to_process = input;
 
+        printf("Main woke up next worker.\n");
+        /* tell next worker to start */
         int ret = mysem_up(&worker_queue);
         if (!ret)
             printf("Lost up call on main on worker_queue\n");
+        /* Wait worker to start working */
+        printf("Main waiting for worker to start.\n");
         mysem_down(&main_sleep);
     }
 
     command = TERMINATE;
     for (int i = 0; i < N; i++) {
+        printf("Main woke up next worker.\n");
+        /* tell next worker to start */
         int ret = mysem_up(&worker_queue);
         if (!ret)
             printf("Lost up call on main on worker_queue\n");
+        /* wait for worker to indicate termination */
+        printf("Main waiting for worker to terminate.\n");
         mysem_down(&main_sleep);
     }
 
@@ -109,24 +117,32 @@ int main(const int argc, char *argv[]) {
 
 void *run_worker(void *arg) {
     worker_t *self = arg;
+
     while(1) {
+        printf("Worker #%ld waiting main.\n", self->thread);
+        /* wait main to wake you up */
         mysem_down(self->worker_queue);
+        printf("Worker #%ld woke up.\n", self->thread);
         long long int value = *self->value_to_process;
         enum master_command command = *self->command;
         
         if (command  == TERMINATE) {
             printf("Worker #%ld: terminating...\n", self->thread);
+            /* tell main that you are terminating */
             int ret = mysem_up(self->main_sleep);
             if (!ret)
                 printf("Lost up call on main on main_sleep\n");
             break;
         }
 
+        printf("Worker #%ld started working.\n", self->thread);
+        /* tell main you are starting work */
         int ret = mysem_up(self->main_sleep);
         if (!ret)
             printf("Lost up call on main on main_sleep\n");
         printf("Worker #%ld: %lld is %sprime\n", self->thread, value, is_prime(value) ? "" : "not ");
     }
+
     return NULL;
 }
 
