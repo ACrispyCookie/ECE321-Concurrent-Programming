@@ -5,7 +5,7 @@ usage() {
     echo "Usage: $0 [option]"
     echo "Options:"
     echo "  -1    Run test that creates less than N passengers"
-    echo "  -2    Run test that creates exactly N passengers"
+    echo "  -2    Run test that creates exactly N passengers every one second"
     echo "  -3    Run test that creates more than N passengers"
     echo "  -4    Run test that creates exactly 2*N passengers"
     exit 1

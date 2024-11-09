@@ -226,7 +226,7 @@ void *train_thread(void *arg) {
         }
         
         //Start the ride
-        //sleep(10);
+        sleep(10);
         
         //Ride is over. Wake passengers on board to leave
         printf("Train %ld: Ride is done!\n", id);
