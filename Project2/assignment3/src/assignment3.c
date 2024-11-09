@@ -104,50 +104,46 @@ void *car(void *arg) {
     int *total_cars = info->total_cars;
 
     
-    printf("%d, %c: Start\n", info->id, t);
     mysem_down(q);
     mysem_down(mtx);
-    printf("%d, %c: Down team\n", info->id, t); 
-    // accessing bridge
+    printf("%d, %c: Trying to access bridge...\n", info->id, t); 
+    //Accessing bridge
     if (*cars == 0) {
-        printf("%d, %c: Was first\n", info->id, t);
+        printf("%d, %c: I was first from my team!\n", info->id, t);
         mysem_down(bridge_access);
-        printf("%d, %c: Got first\n", info->id, t);
+        printf("%d, %c: Got access to the bridge\n", info->id, t);
     }
     (*cars)++;
     (*total_cars)++;
     if (*cars < N && *total_cars < N) {
-        printf("%d, %c: Up next\n", info->id, t);
+        printf("%d, %c: Waking my car behind me!\n", info->id, t);
         if(!mysem_up(q)) {
             printf("Missed an up while waking the next passenger up!\n");
         }
     }
-    printf("%d, %c: Up team\n", info->id, t);
     if(!mysem_up(mtx)) {
         printf("Missed an up on mtx!\n");   
     }
 
-    printf("%d, %c: Crossing\n", info->id, t);
+    printf("%d, %c: Starting to cross the bridge...\n", info->id, t);
     sleep(5);
-    printf("%d, %c: Done crossing\n", info->id, t);
+    printf("%d, %c: Reached the end of the bridge!\n", info->id, t);
 
     mysem_down(mtx);
-    printf("%d, %c: Down team leaving\n", info->id, t);
     (*cars)--;
     if ((*cars) == 0) {
-        printf("%d, %c: Was last\n", info->id, t);
+        printf("%d, %c: I am the last car, opening the bridge to everyone!\n", info->id, t);
         if(!mysem_up(bridge_access)) {
             printf("Missed an up while trying to free the bridge!\n");
         };
         if ((*total_cars) >= N) {
+            printf("%d, %c: Waking first one on my team!\n", info->id, t);
             (*total_cars) = 0;
-            printf("%d, %c: Wake first\n", info->id, t);
             if(!mysem_up(q)) {
                 printf("Missed an up while waking the first passenger up!\n");
             }
         }
     }
-    printf("%d, %c: Up team leaving\n", info->id, t);
     if(!mysem_up(mtx)) {
         printf("Missed an up on mtx!\n");   
     }
