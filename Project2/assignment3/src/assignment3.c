@@ -135,7 +135,7 @@ void *car(void *arg) {
         printf("%d, %c: I am the last car, opening the bridge to everyone!\n", info->id, t);
         if(!mysem_up(bridge_access)) {
             printf("Missed an up while trying to free the bridge!\n");
-        };
+        }
         if ((*total_cars) >= N) {
             printf("%d, %c: Waking first one on my team!\n", info->id, t);
             (*total_cars) = 0;
