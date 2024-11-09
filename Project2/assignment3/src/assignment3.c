@@ -3,127 +3,154 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 typedef struct car_info
 {
-    pthread_t id;
+    int id;
+    pthread_t thread;
     int team;
+    int N;
+    int *cars;
+    int *total_cars;
+    mysem_t *mtx; 
+    mysem_t *q;
+    mysem_t *bridge_access;
 } car_info_t;
 
-int N;
-int cars[2] = {0};
-int total_cars[2] = {0};
-int waiting[2] = {0};
-mysem_t mtx[2]; 
-mysem_t q[2];
-mysem_t bridge_access;
-bool from_non_waiting = false;
 
 void *car(void *arg);
+void create_car(car_info_t **car_array, int team, int N, int id, int *cars, int *total_cars, mysem_t *mtx, mysem_t *q, mysem_t *bridge_access);
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         printf("Usage: %s <number of max cars>\n", argv[0]);
         return -1;
     }
-    N = atoi(argv[1]);
+
+    //Initialize thread variables
+    int N = atoi(argv[1]);
+    int cars[2] = {0};
+    int total_cars[2] = {0};
+    mysem_t mtx[2]; 
+    mysem_t q[2];
+    mysem_t bridge_access;
 
     (mtx[0]).id = -1; (mtx[1]).id = -1;
     (q[0]).id = -1; (q[1]).id = -1;
     bridge_access.id = -1;
-
     mysem_init(&mtx[0], 1);
     mysem_init(&mtx[1], 1);
     mysem_init(&(q[0]), 1);
     mysem_init(&(q[1]), 1);
     mysem_init(&bridge_access, 1);
 
-    pthread_t t1, t2, t3, t4, t5;
-    int r = 0; int b = 1;
-    car_info_t info1; info1.team = r; info1.id = 1;
-    car_info_t info2; info2.team = r; info2.id = 2;
-    car_info_t info3; info3.team = b; info3.id = 3;
-    car_info_t info4; info4.team = b; info4.id = 4;
-    car_info_t info5; info5.team = b; info5.id = 5;
-    pthread_create(&t1, NULL, car, &info1);
-    pthread_create(&t2, NULL, car, &info2);
-    pthread_create(&t3, NULL, car, &info3);
-    pthread_create(&t4, NULL, car, &info4);
-    pthread_create(&t5, NULL, car, &info5);
+    //Initialize main variables
+    car_info_t **cars_array = NULL;
+    int car_count = 0;
 
+    int r = 0; int b = 1;
     while(1) {
         double sleep_time;
         char to_add;
-        scanf("%lf", &sleep_time);
+        int ret = scanf("%lf %c", &sleep_time, &to_add);
+        if (ret == EOF) 
+            break;
         sleep(sleep_time);
-        scanf("%c", &to_add);
-        if (to_add == 'r') //add red car
-        else //add blue car
+
+        car_count++;
+        cars_array = realloc(cars_array, car_count * sizeof(car_info_t *));
+        if (to_add == 'r') create_car(cars_array, r, N, car_count - 1, &cars[r], &total_cars[r], &mtx[r], &q[r], &bridge_access);
+        else create_car(cars_array, b, N, car_count - 1, &cars[b], &total_cars[b], &mtx[b], &q[b], &bridge_access);
     }
-    pthread_join(t1, NULL);
-    pthread_join(t2, NULL);
-    pthread_join(t3, NULL);
-    pthread_join(t4, NULL);
-    pthread_join(t5, NULL);
+
+    for (int i = 0; i < car_count; i++) {
+        pthread_join(cars_array[i]->thread, NULL);
+        free(cars_array[i]);
+    }
+    free(cars_array);
+    
+    mysem_destroy(&mtx[0]);
+    mysem_destroy(&mtx[1]);
+    mysem_destroy(&(q[0]));
+    mysem_destroy(&(q[1]));
+    mysem_destroy(&bridge_access);
     
     return 0;
 }
 
-void *car(void *args) {
-    car_info_t *info = (car_info_t *) args;
-    int i = info->team;
+void create_car(car_info_t **cars_array, int team, int N, int id, int *cars, int *total_cars, mysem_t *mtx, mysem_t *q, mysem_t *bridge_access) {
+    car_info_t *car_info = malloc(sizeof(car_info_t));
+    car_info->id = id;
+    car_info->bridge_access = bridge_access;
+    car_info->q = q;
+    car_info->mtx = mtx;
+    car_info->cars = cars;
+    car_info->total_cars = total_cars;
+    car_info->team = team;
+    car_info->N = N;
+    cars_array[id] = car_info;
+
+    pthread_create(&(car_info->thread), NULL, car, car_info);
+}
+
+void *car(void *arg) {
+    car_info_t *info = arg;
+    char t = info->team ? 'b' : 'r';
+    int N = info->N;
+    mysem_t *mtx = info->mtx;
+    mysem_t *q = info->q;
+    mysem_t *bridge_access = info->bridge_access;
+    int *cars = info->cars;
+    int *total_cars = info->total_cars;
+
     
-    printf("%ld: Start\n", info->id);
-    mysem_down(&q[i]);
-    mysem_down(&mtx[i]);
-    printf("%ld: Down team\n", info->id); 
+    printf("%d, %c: Start\n", info->id, t);
+    mysem_down(q);
+    mysem_down(mtx);
+    printf("%d, %c: Down team\n", info->id, t); 
     // accessing bridge
-    if (cars[i] == 0) {
-        printf("%ld: Was first\n", info->id);
-        waiting[i] = 1;
-        mysem_down(&bridge_access);
-        waiting[i] = 0;
-        printf("%ld: Got first\n", info->id);
+    if (*cars == 0) {
+        printf("%d, %c: Was first\n", info->id, t);
+        mysem_down(bridge_access);
+        printf("%d, %c: Got first\n", info->id, t);
     }
-    cars[i]++;
-    total_cars[i]++;
-    
-    // mtx not needed as change in waiting will only make 1 skip in queue
-    if (/*total cars not needed*/total_cars[i] < N && cars[i] < N && waiting[!i]) {
-        printf("%ld: Up next\n", info->id);
-        from_non_waiting = false;
-        mysem_up(&q[i]);
-    } else if (cars[i] < N && !waiting[!i]) {
-        printf("%ld: Up next\n", info->id);
-        from_non_waiting = true;
-        mysem_up(&q[i]);
-    }
-
-    printf("%ld: Up team\n", info->id);
-    mysem_up(&mtx[i]);
-
-    printf("%ld: Crossing\n", info->id);
-    sleep(3);
-    printf("%ld: Done crossing\n", info->id);
-
-    mysem_down(&mtx[i]);
-    printf("%ld: Down team leaving\n", info->id);
-    cars[i]--;
-    if (total_cars[i] >= N && cars[i] == N - 1 /*this means it was full until I left and it cur thinks it's full still cause i havent opened mtx yet*/ && !waiting[!i]) {
-        mysem_up(&q[i]);
-    } else if (cars[i] == 0) {
-        printf("%ld: Was last, from_non: %d\n", info->id, from_non_waiting);
-        if (total_cars[i] >= N && !from_non_waiting) {
-            printf("%ld: Wake first\n", info->id);
-            mysem_up(&q[i]);
+    (*cars)++;
+    (*total_cars)++;
+    if (*cars < N && *total_cars < N) {
+        printf("%d, %c: Up next\n", info->id, t);
+        if(!mysem_up(q)) {
+            printf("Missed an up while waking the next passenger up!\n");
         }
-        total_cars[i] = 0;
-        from_non_waiting = false;
-        mysem_up(&bridge_access);
     }
-    printf("%ld: Up team leaving\n", info->id);
-    mysem_up(&mtx[i]);
+    printf("%d, %c: Up team\n", info->id, t);
+    if(!mysem_up(mtx)) {
+        printf("Missed an up on mtx!\n");   
+    }
+
+    printf("%d, %c: Crossing\n", info->id, t);
+    sleep(5);
+    printf("%d, %c: Done crossing\n", info->id, t);
+
+    mysem_down(mtx);
+    printf("%d, %c: Down team leaving\n", info->id, t);
+    (*cars)--;
+    if ((*cars) == 0) {
+        printf("%d, %c: Was last\n", info->id, t);
+        if(!mysem_up(bridge_access)) {
+            printf("Missed an up while trying to free the bridge!\n");
+        };
+        if ((*total_cars) >= N) {
+            (*total_cars) = 0;
+            printf("%d, %c: Wake first\n", info->id, t);
+            if(!mysem_up(q)) {
+                printf("Missed an up while waking the first passenger up!\n");
+            }
+        }
+    }
+    printf("%d, %c: Up team leaving\n", info->id, t);
+    if(!mysem_up(mtx)) {
+        printf("Missed an up on mtx!\n");   
+    }
 
     return NULL;
 }

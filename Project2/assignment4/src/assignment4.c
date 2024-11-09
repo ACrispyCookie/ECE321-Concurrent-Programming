@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
             break;
         sleep(sleep_time);
 
-        //Add new passenger
+        //Initialize memory for new passenger
         passenger_count++;
         thread_info_t **new_passengers = realloc(passengers, passenger_count * sizeof(thread_info_t *));
         if (new_passengers == NULL) {
@@ -119,6 +119,8 @@ int main(int argc, char *argv[]) {
             break;
         }
         passengers[passenger_count - 1] = passenger;
+
+        //Create and start new passenger
         create_passenger(passengers[passenger_count - 1], template);
     }
 

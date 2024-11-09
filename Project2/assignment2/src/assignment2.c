@@ -72,7 +72,6 @@ int main(const int argc, char *argv[]) {
     }
     const int N = atoi(argv[1]);
     long long int input;
-
     worker_t *workers;
     mysem_t main_sleep, worker_queue;
     main_sleep.id = -1; worker_queue.id = -1;
