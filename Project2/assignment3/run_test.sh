@@ -41,7 +41,7 @@ while getopts ":12345" opt; do
         5)
             make
             echo "Running with the 5th test"
-            $TEST 1 < ./tests/5.txt
+            $TEST 2 < ./tests/5.txt
             ;;
         \?)
             echo "Invalid option: -$OPTARG"
