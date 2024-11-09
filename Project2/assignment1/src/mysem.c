@@ -6,8 +6,41 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+/*
+    Internal function to add a binary semaphore to the internal
+    array of binary semaphores.
+
+    Parameters:
+    mysem_t *s - the semaphore to add
+    int id - the id of the semaphore
+    Returns:
+    1 for success
+    -1 for failure
+*/
 int mysem_add(mysem_t *s, int id);
+
+/*
+    Internal function to remove a binary semaphore from the internal
+    array of binary semaphores.
+
+    Parameters:
+    mysem_t *s - the semaphore to remove
+    Returns:
+    1 for success
+    -1 for failure
+*/
 int mysem_remove(const mysem_t *s);
+
+/*
+    Internal function to get the index of a binary semaphore
+    in the internal array of binary semaphores.
+
+    Parameters:
+    mysem_t *s - the semaphore to get
+    Returns:
+    -1 if a binary semaphore with the given id doesn't exist
+    or the index of the binary semaphore if it exists
+*/
 int mysem_get(const mysem_t *s);
 
 static mysem_t **sems;
@@ -19,6 +52,7 @@ int mysem_init(mysem_t *s, int n) {
     if (!(n == 0 || n == 1))
         return 0;
 
+    //Initialize system semaphore and add mysem to internal array
     int id = semget(IPC_PRIVATE, 1, S_IRWXU);
     int error = mysem_add(s, id);
     if (error == -1) {
@@ -37,6 +71,7 @@ int mysem_down(mysem_t *s) {
         return -1;
     struct sembuf op; op.sem_num = 0; op.sem_op = -1; op.sem_flg = 0;
 
+    //Using lock for mutual exclusion
     pthread_mutex_lock(&s->lock);
     --s->val;
     if (s->val == 0) {
@@ -55,6 +90,7 @@ int mysem_up(mysem_t *s) {
         return -1;
     struct sembuf op; op.sem_num = 0; op.sem_op = 1; op.sem_flg = 0;
 
+    //Using lock for mutual exclusion
     pthread_mutex_lock(&s->lock);
     if (s->val == 1) {
         pthread_mutex_unlock(&s->lock);
@@ -70,6 +106,8 @@ int mysem_up(mysem_t *s) {
 int mysem_destroy(const mysem_t *s) {
     if (mysem_get(s) == -1)
         return -1;
+
+    //Remove from internal array and destroy system semaphore
     mysem_remove(s);
     semctl(s->id, 0, IPC_RMID);
     return 1;

@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include "../src/mysem.h"
 
-int n = 0;
 
 void *add(void *arg);
 void *subtract(void *arg);
 static int N = 0;
+static int n = 0;
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
