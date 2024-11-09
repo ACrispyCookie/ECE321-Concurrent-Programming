@@ -35,4 +35,4 @@ $(LIBMYSEM): $(MYSEM_OBJ)
 	ar rcs $(LIBMYSEM) $(MYSEM_OBJ)
 
 $(MYSEM_OBJ): $(MYSEM_SRC) $(MYSEM_HEADER)
-	gcc -Wall -g -c $(MYSEM_SRC) -o $(MYSEM_OBJ)
+	gcc -Wall -g -c $(MYSEM_SRC) -o $(MYSEM_OBJ) -lpthread
