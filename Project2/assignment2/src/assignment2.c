@@ -111,7 +111,10 @@ int main(const int argc, char *argv[]) {
         mysem_down(&main_sleep);
     }
 
+    /* Free workers memory and destroy semaphores */
     free(workers);
+    mysem_destroy(&main_sleep);
+    mysem_destroy(&worker_queue);
     return 0;
 }
 
