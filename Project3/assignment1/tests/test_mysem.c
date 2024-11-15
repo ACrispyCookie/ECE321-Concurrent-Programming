@@ -44,12 +44,14 @@ int main(int argc, char *argv[]) {
 void *add(void *arg) {
 #ifdef USE_SEMAPHORE
     mysem_t *sem = arg;
+    printf("downing on add\n");
     mysem_down(sem);
 #endif
     for (int i = 0; i < N; i++) {
         ++n;
     }
 #ifdef USE_SEMAPHORE
+    printf("upping on add\n");
     int ret = mysem_up(sem);
     if (!ret)
         printf("Lost up call on main on semaphore\n");
@@ -60,12 +62,14 @@ void *add(void *arg) {
 void *subtract(void *arg) {
 #ifdef USE_SEMAPHORE
     mysem_t *sem = arg;
+    printf("downing on sub\n");
     mysem_down(sem);
 #endif
     for (int i = 0; i < N; i++) {
         --n;
     }
 #ifdef USE_SEMAPHORE
+    printf("upping on sub\n");
     int ret = mysem_up(sem);
     if (!ret)
         printf("Lost up call on main on semaphore\n");

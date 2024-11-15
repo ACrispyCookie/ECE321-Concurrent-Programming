@@ -1,7 +1,6 @@
 #include "mysem.h"
 #include <stdio.h>
 #include <sys/ipc.h>
-#include <sys/sem.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -53,15 +52,14 @@ int mysem_init(mysem_t *s, int n) {
         return 0;
 
     //Initialize system semaphore and add mysem to internal array
-    int id = semget(IPC_PRIVATE, 1, S_IRWXU);
+    int id = sems_count;
     int error = mysem_add(s, id);
     if (error == -1) {
-        semctl(id, 0, IPC_RMID);
         return -1;
     }
-    semctl(s->id, 0, SETVAL, n);
     s->val = n;
     pthread_mutex_init(&s->lock, NULL);
+    pthread_cond_init(&s->q, NULL);
 
     return 1;
 }
@@ -69,18 +67,20 @@ int mysem_init(mysem_t *s, int n) {
 int mysem_down(mysem_t *s) {
     if (mysem_get(s) == -1)
         return -1;
-    struct sembuf op; op.sem_num = 0; op.sem_op = -1; op.sem_flg = 0;
 
     //Using lock for mutual exclusion
+    printf("locking on down\n");
     pthread_mutex_lock(&s->lock);
+    printf("locked on down %d\n", s->val);
     --s->val;
-    if (s->val == 0) {
-        semop(s->id, &op, 1);
-        pthread_mutex_unlock(&s->lock);
+    if (s->val < 0) {
+        printf("waiting and unlocking\n");
+        pthread_cond_wait(&s->q, &s->lock);
         return 1;
     }
+    printf("unlocking on down\n");
     pthread_mutex_unlock(&s->lock);
-    semop(s->id, &op, 1);
+    printf("unlocked on down\n");
 
     return 1;
 }
@@ -88,28 +88,33 @@ int mysem_down(mysem_t *s) {
 int mysem_up(mysem_t *s) {
     if (mysem_get(s) == -1)
         return -1;
-    struct sembuf op; op.sem_num = 0; op.sem_op = 1; op.sem_flg = 0;
 
     //Using lock for mutual exclusion
+    printf("locking on up\n");
     pthread_mutex_lock(&s->lock);
-    if (s->val == 1) {
-        pthread_mutex_unlock(&s->lock);
+    printf("locked on up %d\n", s->val);
+    if (s->val == 1)
         return 0;
-    }
     ++s->val;
+    if (s->val <= 0) {
+        printf("signalling\n");
+        pthread_cond_signal(&s->q);
+    }
+    printf("unlocking on up\n");
     pthread_mutex_unlock(&s->lock);
-    semop(s->id, &op, 1);
+    printf("unlocked on up\n");
 
     return 1;
 }
 
-int mysem_destroy(const mysem_t *s) {
+int mysem_destroy(mysem_t *s) {
     if (mysem_get(s) == -1)
         return -1;
 
     //Remove from internal array and destroy system semaphore
+    pthread_cond_destroy(&s->q);
+    pthread_mutex_destroy(&s->lock);
     mysem_remove(s);
-    semctl(s->id, 0, IPC_RMID);
     return 1;
 }
 

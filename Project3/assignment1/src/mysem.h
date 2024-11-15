@@ -13,6 +13,7 @@ typedef struct mysem {
     unsigned int id;
     int val;
     pthread_mutex_t lock;
+    pthread_cond_t q;
 } mysem_t;
 
 /*
@@ -77,6 +78,6 @@ int mysem_up(mysem_t *s);
     1 for success
     -1 if the given semaphore is not initialized or is already destroyed
 */
-int mysem_destroy(const mysem_t *s);
+int mysem_destroy(mysem_t *s);
 
 #endif

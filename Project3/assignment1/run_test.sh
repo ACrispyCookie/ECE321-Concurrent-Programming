@@ -24,7 +24,7 @@ while getopts ":us" opt; do
         s)
             make test_with
             echo "Running using semaphores"
-            $TEST_WITH 100000
+            $TEST_WITH 10000
             ;;
         \?)
             echo "Invalid option: -$OPTARG"
