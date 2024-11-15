@@ -69,18 +69,14 @@ int mysem_down(mysem_t *s) {
         return -1;
 
     //Using lock for mutual exclusion
-    printf("locking on down\n");
     pthread_mutex_lock(&s->lock);
-    printf("locked on down %d\n", s->val);
     --s->val;
     if (s->val < 0) {
-        printf("waiting and unlocking\n");
         pthread_cond_wait(&s->q, &s->lock);
+        pthread_mutex_unlock(&s->lock);
         return 1;
     }
-    printf("unlocking on down\n");
     pthread_mutex_unlock(&s->lock);
-    printf("unlocked on down\n");
 
     return 1;
 }
@@ -90,19 +86,14 @@ int mysem_up(mysem_t *s) {
         return -1;
 
     //Using lock for mutual exclusion
-    printf("locking on up\n");
     pthread_mutex_lock(&s->lock);
-    printf("locked on up %d\n", s->val);
     if (s->val == 1)
         return 0;
     ++s->val;
     if (s->val <= 0) {
-        printf("signalling\n");
         pthread_cond_signal(&s->q);
     }
-    printf("unlocking on up\n");
     pthread_mutex_unlock(&s->lock);
-    printf("unlocked on up\n");
 
     return 1;
 }
