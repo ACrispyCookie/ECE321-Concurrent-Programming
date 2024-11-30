@@ -20,16 +20,16 @@ test_with: $(TEST_WITH_SEM)
 test_without: $(TEST_WITHOUT_SEM)
 
 $(TEST_WITH_SEM): $(TEST_WITH_SEM_OBJ) $(MYSEM_OBJ)
-	gcc -Wall -g $(TEST_WITH_SEM_OBJ) $(MYSEM_OBJ) -o $(TEST_WITH_SEM)
+	gcc -Wall -g $(TEST_WITH_SEM_OBJ) $(MYSEM_OBJ) -o $(TEST_WITH_SEM) -lpthread
 
 $(TEST_WITH_SEM_OBJ): $(TEST_SRC) $(MYSEM_HEADER)
-	gcc -Wall -g -c -DUSE_SEMAPHORE $(TEST_SRC) -o $(TEST_WITH_SEM_OBJ)
+	gcc -Wall -g -c -DUSE_SEMAPHORE $(TEST_SRC) -o $(TEST_WITH_SEM_OBJ) -lpthread
 
 $(TEST_WITHOUT_SEM): $(TEST_WITHOUT_SEM_OBJ) $(MYSEM_OBJ)
-	gcc -Wall -g $(TEST_WITHOUT_SEM_OBJ) $(MYSEM_OBJ) -o $(TEST_WITHOUT_SEM)
+	gcc -Wall -g $(TEST_WITHOUT_SEM_OBJ) $(MYSEM_OBJ) -o $(TEST_WITHOUT_SEM) -lpthread
 
 $(TEST_WITHOUT_SEM_OBJ): $(TEST_SRC) $(MYSEM_HEADER)
-	gcc -Wall -g -c $(TEST_SRC) -o $(TEST_WITHOUT_SEM_OBJ)
+	gcc -Wall -g -c $(TEST_SRC) -o $(TEST_WITHOUT_SEM_OBJ) -lpthread
 
 $(LIBMYSEM): $(MYSEM_OBJ)
 	ar rcs $(LIBMYSEM) $(MYSEM_OBJ)

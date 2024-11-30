@@ -173,10 +173,10 @@ void exit_bridge(int id, color team, car_monitor_t *monitor) {
             pthread_cond_signal(opposite_queue);
         }
     } else if (cars_waiting) {
-            printf("%d, %c: # EXITING # Total limit reached but there is no one on the other side.\n", id, team ? 'b' : 'r');
+        printf("%d, %c: # EXITING # Total limit reached but there is no one on the other side.\n", id, team ? 'b' : 'r');
         pthread_cond_signal(queue);
     } else if (*on_bridge == 0) {
-            printf("%d, %c: # EXITING # Total limit reached but there is no one left.\n", id, team ? 'b' : 'r');
+        printf("%d, %c: # EXITING # Total limit reached but there is no one left.\n", id, team ? 'b' : 'r');
         monitor->bridge = NOT_ASSIGNED;
         *total_cars = 0;
     }
@@ -202,58 +202,3 @@ void *car(void *arg) {
 
     return NULL;
 }
-
-/*void *car(void *arg) {
-    car_info_t *info = arg;
-    char t = info->team ? 'b' : 'r';
-    int N = info->N;
-    int *cars = info->cars;
-    int *total_cars = info->total_cars;
-
-    
-    mysem_down(q);
-    mysem_down(mtx);
-    printf("%d, %c: Trying to access bridge...\n", info->id, t); 
-    //Accessing bridge
-    if (*cars == 0) {
-        printf("%d, %c: I was first from my team!\n", info->id, t);
-        mysem_down(bridge_access);
-        printf("%d, %c: Got access to the bridge\n", info->id, t);
-    }
-    (*cars)++;
-    (*total_cars)++;
-    if (*cars < N && *total_cars < N) {
-        printf("%d, %c: Waking my car behind me!\n", info->id, t);
-        if(!mysem_up(q)) {
-            printf("Missed an up while waking the next passenger up!\n");
-        }
-    }
-    if(!mysem_up(mtx)) {
-        printf("Missed an up on mtx!\n");   
-    }
-
-    printf("%d, %c: Starting to cross the bridge...\n", info->id, t);
-    sleep(5);
-    printf("%d, %c: Reached the end of the bridge!\n", info->id, t);
-
-    mysem_down(mtx);
-    (*cars)--;
-    if ((*cars) == 0) {
-        printf("%d, %c: I am the last car, opening the bridge to everyone!\n", info->id, t);
-        if(!mysem_up(bridge_access)) {
-            printf("Missed an up while trying to free the bridge!\n");
-        }
-        if ((*total_cars) >= N) {
-            printf("%d, %c: Waking first one on my team!\n", info->id, t);
-            (*total_cars) = 0;
-            if(!mysem_up(q)) {
-                printf("Missed an up while waking the first passenger up!\n");
-            }
-        }
-    }
-    if(!mysem_up(mtx)) {
-        printf("Missed an up on mtx!\n");   
-    }
-
-    return NULL;
-}*/
