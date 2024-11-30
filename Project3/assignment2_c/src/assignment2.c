@@ -12,6 +12,33 @@ enum master_command {
     TERMINATE
 };
 
+typedef struct worker_data {
+    enum master_command command;
+    long long int value_to_process;
+} worker_data_t;
+
+/*
+    Struct that describes a monitor.
+
+    Fields:
+    int id - The id of the worker.
+    enum worker_state state - The current state of the worker.
+    enum master_command command - The last command the master has send to the worker.
+    long long int value_to_process - The value that must be processed by the worker 
+                                     to determine if it is a prime number or not.
+*/
+typedef struct monitor {
+    int waiting, working;
+    int num_of_workers;
+    bool main_waiting, main_waiting_worker;
+    worker_data_t *data;
+
+    pthread_mutex_t lock;
+    pthread_cond_t main_sleep;
+    pthread_cond_t worker_queue;
+} monitor_t;
+
+
 /*
     Struct that describes a worker.
 
@@ -24,10 +51,7 @@ enum master_command {
 */
 typedef struct worker {
     pthread_t thread;
-    mysem_t *worker_queue;
-    mysem_t *main_sleep;
-    enum master_command *command;
-    long long int *value_to_process;
+    monitor_t *monitor;
 } worker_t;
 
 /*
@@ -67,27 +91,33 @@ void *run_worker(void *arg);
 */
 int is_prime(long long int N);
 
+void set_job(monitor_t *monitor);
+worker_data_t get_job(monitor_t *monitor);
+
 int main(const int argc, char *argv[]) {
     if (argc != 2) {
         printf("Usage: %s <number of workers>\n", argv[0]);
         return -1;
     }
+    worker_data_t data;
+    data.command = PROCESS_VALUE;
 
-    //Initialize variables for threads
+    //Initialize variables for monitor
+    monitor_t monitor;
     const int N = atoi(argv[1]);
-    mysem_t main_sleep, worker_queue;
-    main_sleep.id = -1; worker_queue.id = -1;
-    mysem_init(&main_sleep, 0);
-    mysem_init(&worker_queue, 0);
-    enum master_command command = PROCESS_VALUE;
-    long long int value_to_process = 0;
+    monitor.num_of_workers = N;
+    monitor.main_waiting = false;
+    monitor.waiting = 0;
+    monitor.working = N;
+    monitor.data = &data;
+
+    pthread_mutex_init(&(monitor.lock), NULL);
+    pthread_cond_init(&(monitor.main_sleep), NULL);
+    pthread_cond_init(&(monitor.worker_queue), NULL);
 
     //Initialize template for threads
     worker_t template;
-    template.command = &command;
-    template.main_sleep = &main_sleep;
-    template.worker_queue = &worker_queue;
-    template.value_to_process = &value_to_process;
+    template.monitor = &monitor;
 
     //Initialize variables for main
     long long int input;
@@ -100,27 +130,20 @@ int main(const int argc, char *argv[]) {
         const int read_result = scanf("%lld", &input);
         if (read_result == EOF)
             break;
-        value_to_process = input;
+        data.value_to_process = input;
 
         //Wake up next worker and wait until it starts working
-        printf("Master: Waking up next worker in queue!\n");
-        int ret = mysem_up(&worker_queue);
-        if (!ret)
-            printf("Lost up call on main on worker_queue\n");
-        printf("Master: Waiting for the worker to start working...\n");
-        mysem_down(&main_sleep);
+        printf("Master: Waking up next worker in queue and waiting for him to start working!\n");
+        set_job(&monitor);
     }
 
     //Change command to terminate and start waking workers
-    command = TERMINATE;
+    data.command = TERMINATE;
+    data.value_to_process = -1;
     for (int i = 0; i < N; i++) {
         //Wake up next worker and wait until it starts terminating
-        printf("Master: Waking up next worker in queue to terminate!\n");
-        int ret = mysem_up(&worker_queue);
-        if (!ret)
-            printf("Lost up call on main on worker_queue\n");
-        printf("Master: Waiting for the worker to start terminating...\n");
-        mysem_down(&main_sleep);
+        printf("Master: Waking up next worker in queue and waiting for him to terminate!\n");
+        set_job(&monitor);
     }
 
     //Wait for worker threads to terminate and free all memory
@@ -129,40 +152,80 @@ int main(const int argc, char *argv[]) {
         free(workers[i]);
     }
     free(workers);
-    mysem_destroy(&main_sleep);
-    mysem_destroy(&worker_queue);
+    pthread_mutex_destroy(&(monitor.lock));
+    pthread_cond_destroy(&(monitor.main_sleep));
+    pthread_cond_destroy(&(monitor.worker_queue));
     return 0;
 }
 
 void *run_worker(void *arg) {
     worker_t *self = arg;
+    monitor_t *monitor = self->monitor;
 
     while(1) {
         //Wait until the master wakes me up and copy command and value to work on.
-        printf("Worker #%ld: Waiting on workers queue...\n", self->thread);
-        mysem_down(self->worker_queue);
-        printf("Worker #%ld: Woke up by master!\n", self->thread);
-        long long int value = *self->value_to_process;
-        enum master_command command = *self->command;
+        printf("Worker #%ld: Waiting on for a job...\n", self->thread);
+        worker_data_t job_data = get_job(monitor);
+        printf("Worker #%ld: Got job!\n", self->thread);
+        long long int value = job_data.value_to_process;
+        enum master_command command = job_data.command;
         
         //Wake up main and then break from the while loop
-        if (command  == TERMINATE) {
-            printf("Worker #%ld: Terminating and woke up master!\n", self->thread);
-            int ret = mysem_up(self->main_sleep);
-            if (!ret)
-                printf("Lost up call on main_sleep\n");
+        if (command == TERMINATE) {
+            printf("Worker #%ld: Terminating...\n", self->thread);
             break;
         }
 
         //Wake up main and then process the given value
-        printf("Worker #%ld: Started working and woke up master!\n", self->thread);
-        int ret = mysem_up(self->main_sleep);
-        if (!ret)
-            printf("Lost up call on main_sleep\n");
+        printf("Worker #%ld: Started working!\n", self->thread);
         printf("Worker #%ld: %lld is %sprime\n", self->thread, value, is_prime(value) ? "" : "not ");
     }
 
     return NULL;
+}
+
+worker_data_t get_job(monitor_t *monitor) {
+    pthread_mutex_lock(&monitor->lock);
+    monitor->working--;
+    if (monitor->main_waiting) {
+        monitor->main_waiting = false;
+        pthread_cond_signal(&monitor->main_sleep);
+    } else {
+        monitor->waiting++;
+        pthread_cond_wait(&monitor->worker_queue, &monitor->lock);
+    }
+
+    worker_data_t data;
+    data.command = monitor->data->command;
+    data.value_to_process = monitor->data->value_to_process;
+    monitor->working++;
+
+    if (monitor->main_waiting_worker) {
+        monitor->main_waiting_worker = false;
+        pthread_cond_signal(&monitor->main_sleep);
+    }
+
+    pthread_mutex_unlock(&monitor->lock);
+    return data;
+}
+
+void set_job(monitor_t *monitor) {
+    pthread_mutex_lock(&monitor->lock);
+    if (monitor->waiting > 0) {
+        printf("Master: There are %d workers waiting\n", monitor->waiting);
+        monitor->waiting--;
+        pthread_cond_signal(&monitor->worker_queue);
+    } else {
+        printf("Master: There are no workers waiting, so going to sleep!\n");
+        monitor->main_waiting = true;
+        pthread_cond_wait(&monitor->main_sleep, &monitor->lock);
+    }
+
+    if (monitor->waiting + monitor->working != monitor->num_of_workers) {
+        monitor->main_waiting_worker = true;
+        pthread_cond_wait(&monitor->main_sleep, &monitor->lock);
+    }
+    pthread_mutex_unlock(&monitor->lock);
 }
 
 int create_workers(worker_t **workers, const int N, worker_t template) {
@@ -171,10 +234,7 @@ int create_workers(worker_t **workers, const int N, worker_t template) {
         if (worker == NULL) 
             return -1;
         workers[i] = worker;
-        worker->command = template.command;
-        worker->main_sleep = template.main_sleep;
-        worker->value_to_process = template.value_to_process;
-        worker->worker_queue = template.worker_queue;
+        worker->monitor = template.monitor;
         pthread_create(&(worker->thread), NULL, run_worker, worker);
     }
     return 1;
