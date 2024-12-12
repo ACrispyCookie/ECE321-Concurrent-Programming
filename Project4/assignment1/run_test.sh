@@ -1,6 +1,5 @@
 #!/bin/bash
-TEST_WITH="./target/test_with_sem"
-TEST_WITHOUT="./target/test_without_sem"
+TEST="./target/test_mycoroutines"
 
 usage() {
     echo "Usage: $0 [option]"
@@ -17,14 +16,14 @@ fi
 while getopts ":us" opt; do
     case $opt in
         u)
-            make test_without
+            make
             echo "Running without using semaphores"
-            $TEST_WITHOUT 100000
+            $TEST 10000
             ;;
         s)
-            make test_with
+            make
             echo "Running using semaphores"
-            $TEST_WITH 10000
+            $TEST 10000
             ;;
         \?)
             echo "Invalid option: -$OPTARG"

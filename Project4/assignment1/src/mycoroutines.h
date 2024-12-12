@@ -1,5 +1,6 @@
 #ifndef _MYCOROUTINES_H_
 #define _MYCOROUTINES_H_
+#include <ucontext.h>
 
 /*
     Struct describing a coroutine.
@@ -8,6 +9,7 @@
 */
 typedef struct coroutine {
     unsigned int id;
+    ucontext_t context;
 } co_t;
 
 /*

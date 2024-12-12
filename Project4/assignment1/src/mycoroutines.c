@@ -1,4 +1,8 @@
 #include "mycoroutines.h"
+#include <stddef.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <signal.h>
 
 /*
     Internal function to add a coroutine to the internal
@@ -37,6 +41,7 @@ int myco_remove(const co_t *co);
 */
 int myco_get(const co_t *co);
 
+static co_t *current_context;
 static co_t **cos;
 static unsigned int co_count = 0;
 
@@ -50,26 +55,53 @@ int mycoroutine_init(co_t *main) {
     if (error == -1) {
         return -1;
     }
-    //Initialize co_t struct
-    
+
+    //Set current to main
+    current_context = main;
 
     return 1;
 }
 
-int mycoroutine_create(co_t *co, void(body)(void *), void *arg) {
+int mycoroutine_create(co_t *co, void (body)(void *), void *arg) {
+    if (myco_get(co) != -1)
+        return -1;
 
+    //Initialize coroutine and add co_t to internal array
+    int id = co_count;
+    int error = myco_add(co, id);
+    if (error == -1) {
+        return -1;
+    }
+    
+    //Initialize co_t struct and ucontext_t
+    getcontext(&co->context);
+    co->context.uc_link = NULL;
+    co->context.uc_stack.ss_sp = malloc(SIGSTKSZ);
+    co->context.uc_stack.ss_flags = 0;
+    co->context.uc_stack.ss_size = SIGSTKSZ;
+    makecontext(&co->context, (void (*)(void)) body, 1, arg);
+
+    return 1;
 }
 
 int mycoroutine_switchto(co_t *co) {
+    if (myco_get(co) == -1)
+        return -1;
 
+    co_t *prev_context = current_context;
+    current_context = co;
+    printf("swap\n");
+    swapcontext(&prev_context->context, &co->context);
+    return 1;
 }
 
-int mycoroutine_destroy(co_t *s) {
-    if (myco_get(s) == -1)
+int mycoroutine_destroy(co_t *co) {
+    if (myco_get(co) == -1)
         return -1;
 
     //Remove from internal array and free memory in struct
-    myco_remove(s);
+    free(co->context.uc_stack.ss_sp);
+    myco_remove(co);
     return 1;
 }
 
@@ -83,11 +115,11 @@ int myco_add(co_t *co, const int id) {
     return 1;
 }
 
-int myco_remove(const co_t *s) {
+int myco_remove(const co_t *co) {
     if (cos == NULL)
         return 1;
 
-    int co_index = myco_get(s);
+    int co_index = myco_get(co);
     if (co_index == -1)
         return 1;
     cos[co_index] = cos[co_count - 1];

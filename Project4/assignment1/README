@@ -1,5 +1,5 @@
 Μετάφραση:
-Αρχικά γίνεται compile η βιβλιοθήκη mysem.c με το Makefile στο ίδιο directory
+Αρχικά γίνεται compile η βιβλιοθήκη mycoroutines.c με το Makefile στο ίδιο directory
 και έπειτα γίνονται τα test programs στο directory tests.
 
 Δοκιμή:
