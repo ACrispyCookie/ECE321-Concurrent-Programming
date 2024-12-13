@@ -55,7 +55,7 @@ int mycoroutine_switchto(co_t *co);
     related memory.
 
     Parameters:
-    co_t *co - the semaphore to destroy
+    co_t *co - the coroutine to destroy
 
     Returns:
     1 for success
