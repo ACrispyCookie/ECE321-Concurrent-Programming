@@ -10,7 +10,7 @@ static int n = 0;
 
 int main(int argc, char *argv[]) {
     co_t main, t1, t2;
-    mycoroutine_init(&main);
+    main.id = -1; t1.id = -1; t2.id = -1;
 
     if (argc != 2) {
         printf("Usage: %s <number of operations>\n", argv[0]);
@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
     N = atoi(argv[1]);
     printf("Before threads: %d\n", n);
 
+    mycoroutine_init(&main);
     mycoroutine_create(&t2, subtract, &main);
     mycoroutine_create(&t1, add, &t2);
     mycoroutine_switchto(&t1);
@@ -32,7 +33,6 @@ int main(int argc, char *argv[]) {
 }
 
 void add(void *arg) {
-    printf("add\n");
     for (int i = 0; i < N; i++) {
         ++n;
     }
@@ -40,7 +40,6 @@ void add(void *arg) {
 }
 
 void subtract(void *arg) {
-    printf("sub\n");
     for (int i = 0; i < N; i++) {
         --n;
     }

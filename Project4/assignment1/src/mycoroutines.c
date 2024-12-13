@@ -41,7 +41,7 @@ int myco_remove(const co_t *co);
 */
 int myco_get(const co_t *co);
 
-static co_t *current_context;
+static co_t *current_context, *main_context;
 static co_t **cos;
 static unsigned int co_count = 0;
 
@@ -58,7 +58,7 @@ int mycoroutine_init(co_t *main) {
 
     //Set current to main
     current_context = main;
-
+    main_context = main;
     return 1;
 }
 
@@ -90,17 +90,18 @@ int mycoroutine_switchto(co_t *co) {
 
     co_t *prev_context = current_context;
     current_context = co;
-    printf("swap\n");
     swapcontext(&prev_context->context, &co->context);
     return 1;
 }
 
 int mycoroutine_destroy(co_t *co) {
+    printf("destroy\n");
     if (myco_get(co) == -1)
         return -1;
 
     //Remove from internal array and free memory in struct
-    free(co->context.uc_stack.ss_sp);
+    if (co != main_context)
+        free(co->context.uc_stack.ss_sp);
     myco_remove(co);
     return 1;
 }
@@ -116,6 +117,7 @@ int myco_add(co_t *co, const int id) {
 }
 
 int myco_remove(const co_t *co) {
+    printf("remove\n");
     if (cos == NULL)
         return 1;
 
