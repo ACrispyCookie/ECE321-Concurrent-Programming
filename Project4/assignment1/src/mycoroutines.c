@@ -1,7 +1,5 @@
 #include "mycoroutines.h"
-#include <stddef.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <signal.h>
 
 /*
@@ -95,7 +93,6 @@ int mycoroutine_switchto(co_t *co) {
 }
 
 int mycoroutine_destroy(co_t *co) {
-    printf("destroy\n");
     if (myco_get(co) == -1)
         return -1;
 
@@ -117,7 +114,6 @@ int myco_add(co_t *co, const int id) {
 }
 
 int myco_remove(const co_t *co) {
-    printf("remove\n");
     if (cos == NULL)
         return 1;
 

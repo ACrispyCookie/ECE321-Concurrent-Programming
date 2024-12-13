@@ -98,11 +98,11 @@ int main(const int argc, char *argv[]) {
     pthread_t thread1, thread2;
     const int res1 = pthread_create(&thread1, NULL, thr1, copier);
     if (res1)
-        printf("Failed to create thread 1: %d", res1);
+        printf("Failed to create thread 1: %d\n", res1);
 
     const int res2 = pthread_create(&thread2, NULL, thr2, copier);
     if (res2)
-        printf("Failed to create thread 2: %d", res2);
+        printf("Failed to create thread 2: %d\n", res2);
     while(!copier->done1 || !copier->done2) {}
 
     free(filename_copy);
