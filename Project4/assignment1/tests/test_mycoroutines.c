@@ -77,7 +77,6 @@ int main(const int argc, char *argv[]) {
     }
 
     co_t main, co1, co2;
-    main.id = -1; co1.id = -1; co2.id = -1;
     copier_t *copier = malloc(sizeof(copier_t));
     copier->pipe_id2 = pipe_open(64);
     copier->pipe_id1 = pipe_open(64);

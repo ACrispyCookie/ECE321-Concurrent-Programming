@@ -3,7 +3,7 @@
 #include "../../assignment1/src/mycoroutines.h"
 #include <sys/time.h>
 
-#define THREAD_TIMEOUT_TIME 1000
+#define THREAD_TIMEOUT_TIME 10
 
 /*
     Enum used to describe the runtime of a thread.
@@ -30,12 +30,21 @@ enum thread_state {
     co_t *co - The coroutine related to the thread.
 */
 typedef struct mythread {
-    unsigned int id;
-    enum thread_state state;
-    unsigned long long sleep_until;
     thread_runnable_t runnable;
     co_t co;
+    enum thread_state state;
+    unsigned long long sleep_until;
+    struct mythread *joining_on;
 } mythr_t;
+
+/*
+    Struct that stores a linked list 
+    of threads.
+*/
+typedef struct thread_list {
+    mythr_t *thr;
+    struct thread_list *next;
+} mythr_list_t;
 
 /*
     Struct describing a binary semaphore.
@@ -46,6 +55,8 @@ typedef struct mythread {
 typedef struct mysem {
     unsigned int id;
     int val;
+    mythr_list_t *waiting;
+    int waiting_count;
 } mysem_t;
 
 /*
@@ -172,5 +183,11 @@ int mythreads_sem_up(mysem_t *s);
     -1 if the given semaphore is not initialized or is already destroyed
 */
 int mythreads_sem_destroy(mysem_t *s);
+
+/*
+    Exits the threads environment freeing
+    any related allocated memory.
+*/
+void mythreads_exit();
 
 #endif

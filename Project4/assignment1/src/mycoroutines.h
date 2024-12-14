@@ -5,11 +5,9 @@
 /*
     Struct describing a coroutine.
     Fields:
-    unsigned int id - The coroutine ID.
     ucontext_t context - The user context related to the coroutine.
 */
 typedef struct coroutine {
-    unsigned int id;
     ucontext_t context;
 } co_t;
 
