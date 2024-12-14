@@ -7,6 +7,13 @@
 #include <signal.h>
 
 
+enum alarm_op {
+    DISABLE_ALL, // Disable interrupting too
+    DISABLE, // Disable only alarm
+    ENABLE_PREVIOUS,
+    RESET
+};
+
 /*
     Internal function to add a thread to the internal
     array of threads.
@@ -43,6 +50,15 @@ int mythr_remove(const mythr_t *thr);
     or the index of the thread if it exists
 */
 int mythr_get(const mythr_t *thr);
+
+/*
+    Performs an operation on the alarm and stores the previous alarm
+
+    Parameters:
+    enum alarm_op operation - The operation to perform
+    struct itimerval *previous - the struct to store the previous alarm
+*/
+void alarm_op(enum alarm_op operation, struct itimerval *previous);
 
 /*
     Handles the logic of the scheduler.
@@ -98,29 +114,32 @@ void sleep_until(int timestamp);
 */
 void thread_timeout_handler(int signum);
 
+// Variables for interrupting and default alarms
 static bool no_int = false;
-static struct itimerval timeout_alarm, disarmed_alarm;
+static struct itimerval default_alarm, disarmed_alarm;
+
+// Thread array and main thread related
 static mythr_t main;
 static mythr_t **thrs;
-static int running = 0;
 static unsigned int thr_count = 0;
+static unsigned int running = 0;
 
 void run_scheduler(enum thread_state state) {
-    no_int = true;
-    setitimer(ITIMER_REAL, &disarmed_alarm, NULL);
+    alarm_op(DISABLE_ALL, NULL);
     mythr_t *current = thrs[running];
 
     if (thr_count == 1) {
         switch (state) {
-            case BLOCKED:
-                printf("Deadlock detected!\n");
             case TERMINATED:
-                exit(1);
             case READY:
                 break;
+            case BLOCKED:
+                printf("Deadlock detected!\n");
+                exit(1);
             case SLEEPING:
                 sleep_until(current->sleep_until);
         }
+        alarm_op(DISABLE, NULL);
         return;
     }
 
@@ -135,9 +154,7 @@ void run_scheduler(enum thread_state state) {
     mythr_t *earliest_thread = thrs[earliest_thread_index];
     switch (state) {
         case READY:
-            setitimer(ITIMER_REAL, &timeout_alarm, NULL);
-            no_int = false;
-            mycoroutine_switchto(&current->co);
+            alarm_op(RESET, NULL);
             break;
         case SLEEPING: {
             sleep_until(earliest_thread->sleep_until);
@@ -190,10 +207,25 @@ void switch_thread(enum thread_state state, int next_thread_index) {
 
     mythr_t *next_thread = thrs[running];
     next_thread->state = READY;
-    if (thr_count > 1)
-        setitimer(ITIMER_REAL, &timeout_alarm, NULL);
-    no_int = false;
+    alarm_op(RESET, NULL);
     mycoroutine_switchto(&next_thread->co);
+}
+
+void alarm_op(enum alarm_op operation, struct itimerval *previous) {
+    no_int = !operation;
+    switch (operation)
+    {
+        case DISABLE_ALL:
+        case DISABLE:
+            setitimer(ITIMER_REAL, &disarmed_alarm, previous);
+            break;
+        case ENABLE_PREVIOUS:
+            setitimer(ITIMER_REAL, previous, NULL);
+            break;
+        case RESET:
+            setitimer(ITIMER_REAL, &default_alarm, previous);
+            break;
+    }
 }
 
 void sleep_until(int timestamp) {
@@ -216,10 +248,10 @@ int mythreads_init() {
         return -1;
     
     //Initialize alarms for the schedulers
-    timeout_alarm.it_interval.tv_sec = 0;
-    timeout_alarm.it_interval.tv_usec = THREAD_TIMEOUT_TIME;
-    timeout_alarm.it_value.tv_sec = 0;
-    timeout_alarm.it_value.tv_usec = THREAD_TIMEOUT_TIME;
+    default_alarm.it_interval.tv_sec = 0;
+    default_alarm.it_interval.tv_usec = THREAD_TIMEOUT_TIME;
+    default_alarm.it_value.tv_sec = 0;
+    default_alarm.it_value.tv_usec = THREAD_TIMEOUT_TIME;
 
     disarmed_alarm.it_interval.tv_sec = 0;
     disarmed_alarm.it_interval.tv_usec = 0;
@@ -250,14 +282,16 @@ int mythreads_yield() {
     return 1;
 }
 
+int mythreads_sleep(int secs) {
+    return 1;
+}
+
 int mythreads_create(mythr_t *thr, void (body)(void *), void *arg) {
     struct itimerval previous_alarm;
-    no_int = true;
-    setitimer(ITIMER_REAL, &disarmed_alarm, &previous_alarm);
+    alarm_op(DISABLE_ALL, &previous_alarm);
     if (mythr_get(thr) != -1) {
         printf("Error: thread already exists\n");
-        setitimer(ITIMER_REAL, &previous_alarm, NULL);
-        no_int = false;
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
         return -1;
     }
 
@@ -266,8 +300,7 @@ int mythreads_create(mythr_t *thr, void (body)(void *), void *arg) {
     int error = mythr_add(thr, id);
     if (error == -1) {
         printf("Error: addin thread\n");
-        setitimer(ITIMER_REAL, &previous_alarm, NULL);
-        no_int = false;
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
         return -1;
     }
     
@@ -279,48 +312,44 @@ int mythreads_create(mythr_t *thr, void (body)(void *), void *arg) {
     error = mycoroutine_create(&thr->co, run_thread, &thr->runnable);
     if (error == -1) {
         printf("Error: creating coroutine\n");
-        setitimer(ITIMER_REAL, &previous_alarm, NULL);
-        no_int = false;
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
         return -1;
     }
 
     if (thr_count == 2)
-        setitimer(ITIMER_REAL, &timeout_alarm, NULL);
-    else
-        setitimer(ITIMER_REAL, &previous_alarm, NULL);
-    no_int = false;
+        alarm_op(RESET, &previous_alarm);
+    else 
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
     
     return 1;
 }
 
 int mythreads_destroy(mythr_t *thr) {
     struct itimerval previous_alarm;
-    no_int = true;
-    setitimer(ITIMER_REAL, &disarmed_alarm, &previous_alarm);
+    alarm_op(DISABLE_ALL, &previous_alarm);
     if (mythr_get(thr) == -1) {
-        setitimer(ITIMER_REAL, &previous_alarm, NULL);
-        no_int = false;
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
         return -1;
     }
 
     //Remove from internal array and free memory in struct
     int error = mycoroutine_destroy(&thr->co);
     if (error == -1) {
-        setitimer(ITIMER_REAL, &previous_alarm, NULL);
-        no_int = false;
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
         return -1;
     }
 
     error = mythr_remove(thr);
     if (error == -1) {
-        setitimer(ITIMER_REAL, &previous_alarm, NULL);
-        no_int = false;
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
         return -1;
     }
 
     if (thr_count != 1)
-        setitimer(ITIMER_REAL, &previous_alarm, NULL);
-    no_int = false;
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+    else
+        alarm_op(DISABLE, NULL);
+    
     return 1;
 }
 

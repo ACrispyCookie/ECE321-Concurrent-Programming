@@ -20,9 +20,9 @@ int main(int argc, char *argv[]) {
     mythr_t thr1;
     thr1.id = -1;
     printf("Creating thread...\n");
-    if(mythreads_create(&thr1, test, NULL) == -1) {
-        printf("Error while creating thread...\n");
-    }
+    // if(mythreads_create(&thr1, test, NULL) == -1) {
+    //     printf("Error while creating thread...\n");
+    // }
     printf("Created thread!\n");
 
     while(counter != 5);
