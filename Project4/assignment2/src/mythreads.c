@@ -52,15 +52,6 @@ int mythr_remove(const mythr_t *thr);
 int mythr_get(const mythr_t *thr);
 
 /*
-    Performs an operation on the alarm and stores the previous alarm
-
-    Parameters:
-    enum alarm_op operation - The operation to perform
-    struct itimerval *previous - the struct to store the previous alarm
-*/
-void alarm_op(enum alarm_op operation, struct itimerval *previous);
-
-/*
     Handles the logic of the scheduler.
 
     Parameters:
@@ -96,6 +87,20 @@ int search_threads(bool include_running, int *earliest_thread);
     int next_thread_index - the thread to switch the context to
 */
 void switch_thread(enum thread_state state, int next_thread_index);
+
+/*
+    Performs an operation on the alarm and stores the previous alarm
+
+    Parameters:
+    enum alarm_op operation - The operation to perform
+    struct itimerval *previous - the struct to store the previous alarm
+*/
+void alarm_op(enum alarm_op operation, struct itimerval *previous);
+
+/*
+    Returns an epoch timestamp in milliseconds.
+*/
+unsigned long long time_in_millis();
 
 /*
     Sleeps until the given timestamp. If the timestamp has passed
@@ -189,7 +194,7 @@ int search_threads(bool include_running, int *earliest_thread) {
 
     for (int i = (running + 1) % thr_count; i != running; i = (i + 1) % thr_count) {
         mythr_t *next = thrs[i];
-        if (next->state == READY) {
+        if (next->state == READY || (next->state == SLEEPING && next->sleep_until < time_in_millis())) {
             next_ready = i;
             break;
         } else if (next->state == SLEEPING && (minimum_sleeping == -1 || (thrs[minimum_sleeping])->sleep_until > next->sleep_until))
@@ -228,10 +233,18 @@ void alarm_op(enum alarm_op operation, struct itimerval *previous) {
     }
 }
 
+unsigned long long time_in_millis() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    return (unsigned long long)(tv.tv_sec) * 1000 +
+           (unsigned long long)(tv.tv_usec) / 1000;
+}
+
 void sleep_until(int timestamp) {
-    int sleep_amount = timestamp - time(NULL);
+    int sleep_amount = timestamp - time_in_millis();
     if (sleep_amount > 0)
-        sleep(sleep_amount);
+        sleep(sleep_amount / 1000);
 }
 
 void thread_timeout_handler(int signum) {
@@ -283,6 +296,10 @@ int mythreads_yield() {
 }
 
 int mythreads_sleep(int secs) {
+    alarm_op(DISABLE_ALL, NULL);
+    mythr_t *current = thrs[running];
+    current->sleep_until = time_in_millis() + (secs * 1000L);
+    run_scheduler(SLEEPING);
     return 1;
 }
 

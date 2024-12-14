@@ -3,7 +3,7 @@
 #include "../../assignment1/src/mycoroutines.h"
 #include <sys/time.h>
 
-#define THREAD_TIMEOUT_TIME 0
+#define THREAD_TIMEOUT_TIME 1000
 
 /*
     Enum used to describe the runtime of a thread.
@@ -32,7 +32,7 @@ enum thread_state {
 typedef struct mythread {
     unsigned int id;
     enum thread_state state;
-    time_t sleep_until;
+    unsigned long long sleep_until;
     thread_runnable_t runnable;
     co_t co;
 } mythr_t;
