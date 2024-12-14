@@ -1,38 +1,28 @@
 TARGET_DIR = ./target
-TEST_SRC = ./tests/test_mysem.c
-MYSEM_SRC = ./src/mysem.c
-MYSEM_HEADER = ./src/mysem.h
+TEST_SRC = ./tests/test_mythr.c
+MYTHREADS_SRC = ./src/mythreads.c
+MYTHREADS_HEADER = ./src/mythreads.h
+LIBMYCOROUTINES_DIR = ../assignment1/target
+LIBMYCOROUTINES = $(LIBMYCOROUTINES_DIR)/mycoroutines.o
 
-TEST_WITH_SEM = $(TARGET_DIR)/test_with_sem
-TEST_WITHOUT_SEM = $(TARGET_DIR)/test_without_sem
-TEST_WITH_SEM_OBJ = $(TARGET_DIR)/test_with_sem.o
-TEST_WITHOUT_SEM_OBJ = $(TARGET_DIR)/test_without_sem.o
-MYSEM_OBJ = $(TARGET_DIR)/mysem.o
-LIBMYSEM = $(TARGET_DIR)/libmysem.a
+TEST = $(TARGET_DIR)/test_mythr
+TEST_OBJ = $(TARGET_DIR)/test_mythr.o
+MYTHREADS_OBJ = $(TARGET_DIR)/mythreads.o
+LIBMYTHREADS = $(TARGET_DIR)/libmythreads.a
 
-all: test_with $(LIBMYSEM)
+all: $(TEST) $(LIBMYTHREADS) $(LIBMYCOROUTINES)
 
-clear: $(TEST_WITH_SEM) $(TEST_WITHOUT_SEM) $(TEST_WITH_SEM_OBJ) $(TEST_WITHOUT_SEM_OBJ) $(MYSEM_OBJ) $(LIBMYSEM)
-	rm -rf $(TEST_WITH_SEM) $(TEST_WITHOUT_SEM) $(TEST_WITH_SEM_OBJ) $(TEST_WITHOUT_SEM_OBJ) $(MYSEM_OBJ) $(LIBMYSEM)
+clear: $(TEST) $(TEST_OBJ) $(MYTHREADS_OBJ) $(LIBMYTHREADS)
+	rm -rf $(TEST) $(TEST_OBJ) $(MYTHREADS_OBJ) $(LIBMYTHREADS)
 
-test_with: $(TEST_WITH_SEM)
+$(TEST): $(TEST_OBJ) $(MYTHREADS_OBJ) $(LIBMYTHREADS)
+	gcc -Wall -g $(TEST_OBJ) $(MYTHREADS_OBJ) -L$(TARGET_DIR) -lmythreads -o $(TEST)
 
-test_without: $(TEST_WITHOUT_SEM)
+$(TEST_OBJ): $(TEST_SRC) $(MYTHREADS_HEADER)
+	gcc -Wall -g -c $(TEST_SRC) -o $(TEST_OBJ)
 
-$(TEST_WITH_SEM): $(TEST_WITH_SEM_OBJ) $(MYSEM_OBJ)
-	gcc -Wall -g $(TEST_WITH_SEM_OBJ) $(MYSEM_OBJ) -o $(TEST_WITH_SEM) -lpthread
+$(LIBMYTHREADS): $(MYTHREADS_OBJ) $(LIBMYCOROUTINES)
+	ar rcs $(LIBMYTHREADS) $(MYTHREADS_OBJ) $(LIBMYCOROUTINES)
 
-$(TEST_WITH_SEM_OBJ): $(TEST_SRC) $(MYSEM_HEADER)
-	gcc -Wall -g -c -DUSE_SEMAPHORE $(TEST_SRC) -o $(TEST_WITH_SEM_OBJ) -lpthread
-
-$(TEST_WITHOUT_SEM): $(TEST_WITHOUT_SEM_OBJ) $(MYSEM_OBJ)
-	gcc -Wall -g $(TEST_WITHOUT_SEM_OBJ) $(MYSEM_OBJ) -o $(TEST_WITHOUT_SEM) -lpthread
-
-$(TEST_WITHOUT_SEM_OBJ): $(TEST_SRC) $(MYSEM_HEADER)
-	gcc -Wall -g -c $(TEST_SRC) -o $(TEST_WITHOUT_SEM_OBJ) -lpthread
-
-$(LIBMYSEM): $(MYSEM_OBJ)
-	ar rcs $(LIBMYSEM) $(MYSEM_OBJ)
-
-$(MYSEM_OBJ): $(MYSEM_SRC) $(MYSEM_HEADER)
-	gcc -Wall -g -c $(MYSEM_SRC) -o $(MYSEM_OBJ) -lpthread
+$(MYTHREADS_OBJ): $(MYTHREADS_SRC) $(MYTHREADS_HEADER)
+	gcc -Wall -g -c $(MYTHREADS_SRC) -o $(MYTHREADS_OBJ)

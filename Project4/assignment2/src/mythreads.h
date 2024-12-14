@@ -1,6 +1,27 @@
 #ifndef _MYTHREADS_H_
 #define _MYTHREADS_H_
 #include "../../assignment1/src/mycoroutines.h"
+#include <sys/time.h>
+
+#define THREAD_TIMEOUT_TIME 0
+
+/*
+    Enum used to describe the runtime of a thread.
+*/
+typedef struct thread_runnable {
+    void (*body) (void *);
+    void *arg;
+} thread_runnable_t;
+
+/*
+    Enum describing the state of a thread.
+*/
+enum thread_state {
+    READY,
+    SLEEPING,
+    BLOCKED,
+    TERMINATED
+};
 
 /*
     Struct describing a thread.
@@ -10,7 +31,10 @@
 */
 typedef struct mythread {
     unsigned int id;
-    co_t *co;
+    enum thread_state state;
+    time_t sleep_until;
+    thread_runnable_t runnable;
+    co_t co;
 } mythr_t;
 
 /*

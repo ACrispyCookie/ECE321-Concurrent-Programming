@@ -13,7 +13,7 @@ MYCOROUTINES_TEST_SRC = ./tests/test_mycoroutines.c
 MYCOROUTINES_TEST_OBJ = $(TARGET_DIR)/test_mycoroutines.o
 MYCOROUTINES_TEST = $(TARGET_DIR)/test_mycoroutines
 
-all: $(MYCOROUTINES_TEST)
+all: $(MYCOROUTINES_TEST) $(LIBMYCOROUTINES)
 
 clear_resources: 
 	rm -rf ./resources/*.copy ./resources/*.copy2
