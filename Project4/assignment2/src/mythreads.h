@@ -1,9 +1,10 @@
 #ifndef _MYTHREADS_H_
 #define _MYTHREADS_H_
 #include "../../assignment1/src/mycoroutines.h"
+#include "../../list/src/list.h"
 #include <sys/time.h>
 
-#define THREAD_TIMEOUT_TIME 10
+#define THREAD_TIMEOUT_TIME 1000
 
 /*
     Enum used to describe the runtime of a thread.
@@ -38,25 +39,14 @@ typedef struct mythread {
 } mythr_t;
 
 /*
-    Struct that stores a linked list 
-    of threads.
-*/
-typedef struct thread_list {
-    mythr_t *thr;
-    struct thread_list *next;
-} mythr_list_t;
-
-/*
     Struct describing a binary semaphore.
     Fields:
     unsigned int id - The semaphore ID. Should be set to -1 before calling mysem_init.
     int val - The value of the semaphore. Should never be touched.
 */
 typedef struct mysem {
-    unsigned int id;
     int val;
-    mythr_list_t *waiting;
-    int waiting_count;
+    list_t *waiting;
 } mysem_t;
 
 /*

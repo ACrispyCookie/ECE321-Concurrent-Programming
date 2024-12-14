@@ -2,10 +2,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <unistd.h>
 #include <signal.h>
-
 
 enum alarm_op {
     DISABLE_ALL, // Disable interrupting too
@@ -48,7 +46,7 @@ void reload_states(enum thread_state state);
     the index of the next ready thread in the queue
     or -1 if there is no ready thread in the queue
 */
-mythr_list_t *search_threads(bool include_running, mythr_list_t **earliest_thread);
+mythr_t *search_threads(bool include_running, mythr_t **earliest_thread);
 
 /*
     Switches the context to the given thread.
@@ -57,7 +55,7 @@ mythr_list_t *search_threads(bool include_running, mythr_list_t **earliest_threa
     enum thread_state running_next_state - the state to set the previously running thread to
     int next_thread_index - the thread to switch the context to
 */
-void switch_thread(enum thread_state running_next_state, mythr_list_t *next_thread_node);
+void switch_thread(enum thread_state running_next_state, mythr_t *next_thread_node);
 
 /*
     Performs an operation on the alarm and stores the previous alarm
@@ -90,73 +88,19 @@ void sleep_until(unsigned long long timestamp);
 */
 void thread_timeout_handler(int signum);
 
-/*
-    Internal function to initialize a circular thread list.
-
-    Parameters:
-    mythr_list_t **head - the pointer to store the head of the list
-    Returns:
-    1 for success
-    -1 for failure
-*/
-mythr_list_t *thread_list_init();
-
-/*
-    Internal function to add a thread to a
-    list of threads.
-
-    Parameters:
-    mythr_list_t *head - the list to add the thread to
-    unsigned int *list_size - the size of the list
-    mythr_t *thr - the thread to add
-    Returns:
-    1 for success
-    -1 for failure
-*/
-int thread_list_add(mythr_list_t *head, unsigned int *list_size, mythr_t *thr);
-
-/*
-    Internal function to remove a thread from a
-    list of threads.
-
-    Parameters:
-    mythr_list_t *head - the list to remove the thread from
-    unsigned int *list_size - the size of the list
-    mythr_t *thr - the thread to remove
-    Returns:
-    1 for if the thread didn't exist in the list or it was successfully removed
-    -1 for failure
-*/
-int thread_list_remove(mythr_list_t *head, unsigned int *list_size, mythr_t *thr);
-
-/*
-    Internal function to check if a thread is present
-    in a list of threads.
-
-    Parameters:
-    mythr_list_t *head - the list to check if the thread exists in
-    mythr_t *thr - the thread to check
-    Returns:
-    true - if the thread exists in the list
-    false - if the thread doesn't exist in the list
-*/
-bool thread_list_exists(mythr_list_t *head, mythr_t *thr);
-
 // Variables for interrupting and default alarms
 static bool no_int = false;
 static struct itimerval default_alarm, disarmed_alarm;
 
 // Thread array and main thread related
 static mythr_t main;
-static mythr_list_t *running_node;
-static mythr_list_t *thrs;
-static unsigned int thr_count = 0;
+static mythr_t *running_thr;
+static list_t *thrs;
 
 void run_scheduler(enum thread_state state) {
     alarm_op(DISABLE_ALL, NULL);
-    mythr_t *current = running_node->thr;
 
-    if (thr_count == 1) {
+    if (thrs->size == 1) {
         switch (state) {
             case TERMINATED:
             case READY:
@@ -165,29 +109,28 @@ void run_scheduler(enum thread_state state) {
                 printf("Deadlock detected!\n");
                 exit(1);
             case SLEEPING:
-                sleep_until(current->sleep_until);
+                sleep_until(running_thr->sleep_until);
         }
         alarm_op(DISABLE, NULL);
         return;
     }
 
     reload_states(state);
-    mythr_list_t *next_ready_node, *earliest_thread_node;
-    next_ready_node = search_threads(state == SLEEPING, &earliest_thread_node);
+    mythr_t *next_ready, *earliest_thread;
+    next_ready = search_threads(state == SLEEPING, &earliest_thread);
 
-    if (next_ready_node != NULL) {
-        switch_thread(state, next_ready_node);
+    if (next_ready != NULL) {
+        switch_thread(state, next_ready);
         return;
     }
 
-    mythr_t *earliest_thread = earliest_thread_node == NULL ? NULL : earliest_thread_node->thr;
     switch (state) {
         case READY:
             alarm_op(RESET, NULL);
             break;
         case SLEEPING: {
             sleep_until(earliest_thread->sleep_until);
-            switch_thread(state, earliest_thread_node);
+            switch_thread(state, earliest_thread);
             break;
         }
         case TERMINATED:
@@ -198,7 +141,7 @@ void run_scheduler(enum thread_state state) {
             }
             
             sleep_until(earliest_thread->sleep_until);
-            switch_thread(state, earliest_thread_node);
+            switch_thread(state, earliest_thread);
         }
     }
 }
@@ -213,45 +156,45 @@ void run_thread(void *arg) {
 }
 
 void reload_states(enum thread_state running_next_state) {
-    for (mythr_list_t *node = running_node->next; node != running_node; node = node->next) {
-        if (node == thrs)
+    node_t *running_node = list_find(thrs, running_thr, NULL);
+    for (node_t *node = running_node->next; node != running_node; node = node->next) {
+        if (node == thrs->head)
             continue;
 
-        mythr_t *thr = node->thr;
+        mythr_t *thr = (mythr_t *) node->data;
         bool sleep_expired = thr->state == SLEEPING && thr->sleep_until < time_in_millis();
         bool join_thread_terminated = thr->state == BLOCKED && thr->joining_on != NULL && 
-                                    (thr->joining_on->state == TERMINATED || (thr->joining_on == running_node->thr && running_next_state == TERMINATED));
+                                    (thr->joining_on->state == TERMINATED || (thr->joining_on == running_thr && running_next_state == TERMINATED));
         if (sleep_expired || join_thread_terminated)
             thr->state = READY;
     }
 }
 
-mythr_list_t *search_threads(bool include_running, mythr_list_t **earliest_thread) {
-    mythr_list_t *next_ready = NULL;
-    mythr_list_t *minimum_sleeping = include_running ? running_node : NULL;
+mythr_t *search_threads(bool include_running, mythr_t **earliest_thread) {
+    node_t *running_node = list_find(thrs, running_thr, NULL);
+    mythr_t *next_ready = NULL;
+    mythr_t *minimum_sleeping = include_running ? running_thr : NULL;
 
-    for (mythr_list_t *node = running_node->next; node != running_node; node = node->next) {
-        if (node == thrs)
+    for (node_t *node = running_node->next; node != running_node; node = node->next) {
+        if (node == thrs->head)
             continue;
         
-        mythr_t *thr = node->thr;
+        mythr_t *thr = (mythr_t *) node->data;
         if (thr->state == READY) {
-            next_ready = node;
+            next_ready = thr;
             break;
-        } else if (thr->state == SLEEPING && (minimum_sleeping == NULL || minimum_sleeping->thr->sleep_until > thr->sleep_until))
-            minimum_sleeping = node;
+        } else if (thr->state == SLEEPING && (minimum_sleeping == NULL || minimum_sleeping->sleep_until > thr->sleep_until))
+            minimum_sleeping = thr;
     }
 
     *earliest_thread = minimum_sleeping;
     return next_ready;
 }
 
-void switch_thread(enum thread_state running_next_state, mythr_list_t *next_thread_node) {
-    mythr_t *current_thread = running_node->thr;
-    current_thread->state = running_next_state;
-    running_node = next_thread_node;
+void switch_thread(enum thread_state running_next_state, mythr_t *next_thread) {
+    running_thr->state = running_next_state;
+    running_thr = next_thread;
 
-    mythr_t *next_thread = running_node->thr;
     next_thread->state = READY;
     alarm_op(RESET, NULL);
     mycoroutine_switchto(&next_thread->co);
@@ -264,11 +207,14 @@ void alarm_op(enum alarm_op operation, struct itimerval *previous) {
         case DISABLE_ALL:
         case DISABLE:
             setitimer(ITIMER_REAL, &disarmed_alarm, previous);
+            // printf("disable alarm\n");
             break;
         case ENABLE_PREVIOUS:
+            // printf("enable previous alarm\n");
             setitimer(ITIMER_REAL, previous, NULL);
             break;
         case RESET:
+            // printf("reset alarm\n");
             setitimer(ITIMER_REAL, &default_alarm, previous);
             break;
     }
@@ -291,20 +237,22 @@ void sleep_until(unsigned long long timestamp) {
 }
 
 void thread_timeout_handler(int signum) {
+    // printf("alarm hit\n");
     if (no_int)
         return;
 
-    run_scheduler(running_node->thr->state);
+    run_scheduler(running_thr->state);
+    // printf("alarm exit\n");
 }
 
 int mythreads_init() {
     //Initialize thread and add mythr_t to internal array
-    thrs = thread_list_init();
+    thrs = list_init();
     if (thrs == NULL)
         return -1;
-    if (thread_list_add(thrs, &thr_count, &main) == -1)
+    if (list_add(thrs, &main) == -1)
         return -1;
-    running_node = thrs->next;
+    running_thr = &main;
     
     //Initialize alarms for the schedulers
     default_alarm.it_interval.tv_sec = 0;
@@ -322,6 +270,7 @@ int mythreads_init() {
     sigset_t blocked_sigs;
     sigemptyset(&blocked_sigs);
     sigaddset(&blocked_sigs, SIGINT);
+    sigaddset(&blocked_sigs, SIGALRM);
     alarm_action.sa_handler = thread_timeout_handler;
     alarm_action.sa_mask = blocked_sigs;
     alarm_action.sa_flags = 0;
@@ -343,8 +292,7 @@ int mythreads_yield() {
 
 int mythreads_sleep(int secs) {
     alarm_op(DISABLE_ALL, NULL);
-    mythr_t *current = running_node->thr;
-    current->sleep_until = time_in_millis() + (secs * 1000L);
+    running_thr->sleep_until = time_in_millis() + (secs * 1000L);
     
     run_scheduler(SLEEPING);
     return 1;
@@ -353,12 +301,13 @@ int mythreads_sleep(int secs) {
 int mythreads_join(mythr_t *thr) {
     struct itimerval previous;
     alarm_op(DISABLE_ALL, &previous);
+    // printf("join start\n");
     if (thr == NULL || thr->state == TERMINATED) {
         alarm_op(ENABLE_PREVIOUS, &previous);
         return 1;
     }
 
-    running_node->thr->joining_on = thr;
+    running_thr->joining_on = thr;
     run_scheduler(BLOCKED);
     return 1;
 }
@@ -366,34 +315,29 @@ int mythreads_join(mythr_t *thr) {
 int mythreads_create(mythr_t *thr, void (body)(void *), void *arg) {
     struct itimerval previous_alarm;
     alarm_op(DISABLE_ALL, &previous_alarm);
-    if (thread_list_exists(thrs, thr)) {
-        printf("Error: thread already exists\n");
+    if (list_find(thrs, thr, NULL) != NULL) {
         alarm_op(ENABLE_PREVIOUS, &previous_alarm);
         return -1;
     }
 
-    //Initialize thread and add mythr_t to internal array
-    int error = thread_list_add(thrs, &thr_count, thr);
-    if (error == -1) {
-        printf("Error: addin thread\n");
+    //Initialize thread and add mythr_t to internal list
+    if (list_add(thrs, thr) == -1) {
         alarm_op(ENABLE_PREVIOUS, &previous_alarm);
         return -1;
     }
     
     //Initialize mythr_t struct
-    thr->co.id = -1;
     thr->state = READY;
     thr->joining_on = NULL;
     thr->runnable.body = body;
     thr->runnable.arg = arg;
-    error = mycoroutine_create(&thr->co, run_thread, &thr->runnable);
-    if (error == -1) {
-        printf("Error: creating coroutine\n");
+    if (mycoroutine_create(&thr->co, run_thread, &thr->runnable) == -1) {
         alarm_op(ENABLE_PREVIOUS, &previous_alarm);
         return -1;
     }
 
-    if (thr_count == 2)
+    //Start alarm if this was the second thread or restore previous running time
+    if (thrs->size == 2)
         alarm_op(RESET, &previous_alarm);
     else 
         alarm_op(ENABLE_PREVIOUS, &previous_alarm);
@@ -404,25 +348,25 @@ int mythreads_create(mythr_t *thr, void (body)(void *), void *arg) {
 int mythreads_destroy(mythr_t *thr) {
     struct itimerval previous_alarm;
     alarm_op(DISABLE_ALL, &previous_alarm);
-    if (!thread_list_exists(thrs, thr)) {
+    if (list_find(thrs, thr, NULL) == NULL) {
         alarm_op(ENABLE_PREVIOUS, &previous_alarm);
         return -1;
     }
 
-    //Remove from internal array and free memory in struct
-    int error = mycoroutine_destroy(&thr->co);
-    if (error == -1) {
+    //Destroy coroutine of thread
+    if (mycoroutine_destroy(&thr->co) == -1) {
         alarm_op(ENABLE_PREVIOUS, &previous_alarm);
         return -1;
     }
 
-    error = thread_list_remove(thrs, &thr_count, thr);
-    if (error == -1) {
+    //Remove thread from internal list
+    if (list_remove(thrs, thr) == -1) {
         alarm_op(ENABLE_PREVIOUS, &previous_alarm);
         return -1;
     }
 
-    if (thr_count != 1)
+    //Disable alarm if this is the last thread
+    if (thrs->size != 1)
         alarm_op(ENABLE_PREVIOUS, &previous_alarm);
     else
         alarm_op(DISABLE, NULL);
@@ -431,62 +375,6 @@ int mythreads_destroy(mythr_t *thr) {
 }
 
 void mythreads_exit() {
-    thread_list_remove(thrs, &thr_count, &main);
-    free(thrs);
-}
-
-mythr_list_t *thread_list_init() {
-    mythr_list_t *head_node = (mythr_list_t *) malloc(sizeof(mythr_list_t));
-    if (head_node == NULL)
-        return NULL;
-
-    head_node->next = head_node;
-    head_node->thr = NULL;
-    return head_node;
-}
-
-int thread_list_add(mythr_list_t *head, unsigned int *list_size, mythr_t *thr) {
-    mythr_list_t *node = head;
-
-    mythr_list_t *new_node = (mythr_list_t *) malloc(sizeof(mythr_list_t));
-    if (new_node == NULL)
-        return -1;
-    
-    while(node->next != head)
-        node = node->next;
-
-    new_node->next = head;
-    new_node->thr = thr;
-    node->next = new_node;
-    (*list_size)++;
-    return 1;
-}
-
-int thread_list_remove(mythr_list_t *head, unsigned int *list_size, mythr_t *thr) {
-    mythr_list_t *previous = head;
-    mythr_list_t *node = head->next;
-
-    head->thr = thr;
-    while (node->thr != thr) {
-        previous = node;
-        node = node->next;
-    }
-    
-    if (node == head)
-        return 1;
-    
-    previous->next = node->next;
-    (*list_size)--;
-    free(node);
-    return 1;
-}
-
-bool thread_list_exists(mythr_list_t *head, mythr_t *thr) {
-    mythr_list_t *node = head->next;
-
-    head->thr = thr;
-    while(node->thr != thr)
-        node = node->next;
-
-    return node != head;
+    mycoroutine_destroy(&main.co);
+    list_destroy(thrs);
 }
