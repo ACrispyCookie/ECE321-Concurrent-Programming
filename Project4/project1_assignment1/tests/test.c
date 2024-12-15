@@ -142,8 +142,10 @@ size_t write_file_to_pipe(const char *filename, const unsigned int pipe_id) {
         if (bytes_read == 0)
             break;
         pipe_write(pipe_id, buffer);
-        if (total_bytes % 1000 == 0)
-            printf("Written %ld\n", total_bytes);
+        if (total_bytes % 100 == 0) {
+            printf("\rWritten %ld", total_bytes);
+            fflush(stdout);
+        }
     }
     pipe_writeDone(pipe_id);
     fclose(file);

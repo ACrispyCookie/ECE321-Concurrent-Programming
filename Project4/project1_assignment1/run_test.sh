@@ -19,16 +19,19 @@ fi
 while getopts ":tiv" opt; do
     case $opt in
         t)
+            make
             echo "Running with a text file"
             FILE="./resources/bigfile.txt"
             $TEST $FILE
             ;;
         i)
+            make
             echo "Running with an image file"
             FILE="./resources/img1.jpg"
             $TEST $FILE
             ;;
         v)
+            make
             echo "Running with a video file"
             FILE="./resources/vid.mp4"
             $TEST $FILE

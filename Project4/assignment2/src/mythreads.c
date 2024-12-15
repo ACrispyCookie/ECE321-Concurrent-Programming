@@ -39,14 +39,14 @@ void reload_states(enum thread_state state);
     that needs to wake up the earliest if there is any.
 
     Parameters:
-    bool include_running - Include the currently running thread as a sleeping thread
+    bool running_thread_sleeping - Include the currently running thread as a sleeping thread
     int *earliest_thread - The thread that is sleeping and needs to wake up the earliest
 
     Returns:
     the index of the next ready thread in the queue
     or -1 if there is no ready thread in the queue
 */
-mythr_t *search_threads(bool include_running, mythr_t **earliest_thread);
+mythr_t *search_threads(bool running_thread_sleeping, mythr_t **earliest_thread);
 
 /*
     Switches the context to the given thread.
@@ -89,14 +89,14 @@ void sleep_until(unsigned long long timestamp);
 void thread_timeout_handler(int signum);
 
 // Variables for interrupting and default alarms
-static bool no_int = false;
+// static bool no_int = false;
 static struct itimerval default_alarm, disarmed_alarm;
 
 // Thread array and main thread related
 static mythr_t main;
 static mythr_t *running_thr;
-static list_t *thrs;
-static list_t *sems;
+static list_t *thrs = NULL;
+static list_t *sems = NULL;
 
 void run_scheduler(enum thread_state state) {
     alarm_op(DISABLE_ALL, NULL);
@@ -107,7 +107,11 @@ void run_scheduler(enum thread_state state) {
             case READY:
                 break;
             case BLOCKED:
-                printf("Deadlock detected!\n");
+                printf("============================== MYTHREADS ==============================\n");
+                printf("Deadlock detected! Either all threads are blocked or terminated an the last one\n");
+                printf("passing the CPU to the scheduler is also terminating or becoming blocked!\n");
+                printf("The program will now exit.\n");
+                mythreads_exit();
                 exit(1);
             case SLEEPING:
                 sleep_until(running_thr->sleep_until);
@@ -116,6 +120,9 @@ void run_scheduler(enum thread_state state) {
         return;
     }
 
+    // Reload outdated states and find any 
+    // thread that is available to run or find the next one
+    // that needs to wake up from a sleep()
     reload_states(state);
     mythr_t *next_ready, *earliest_thread;
     next_ready = search_threads(state == SLEEPING, &earliest_thread);
@@ -137,7 +144,11 @@ void run_scheduler(enum thread_state state) {
         case TERMINATED:
         case BLOCKED: {
             if (earliest_thread == NULL) {
-                printf("Deadlock detected!\n");
+                printf("============================== MYTHREADS ==============================\n");
+                printf("Deadlock detected! Either all threads are blocked or terminated an the last one\n");
+                printf("passing the CPU to the scheduler is also terminating or becoming blocked!\n");
+                printf("The program will now exit.\n");
+                mythreads_exit();
                 exit(1);
             }
             
@@ -159,6 +170,9 @@ void run_thread(void *arg) {
 
 void reload_states(enum thread_state running_next_state) {
     node_t *running_node = list_find(thrs, running_thr, NULL);
+
+    // Full cycle around the thread queue to update any outdated states
+    // of the threads that were sleeping or were joining another thread.
     for (node_t *node = running_node->next; node != running_node; node = node->next) {
         if (node == thrs->head)
             continue;
@@ -172,11 +186,13 @@ void reload_states(enum thread_state running_next_state) {
     }
 }
 
-mythr_t *search_threads(bool include_running, mythr_t **earliest_thread) {
+mythr_t *search_threads(bool running_thread_sleeping, mythr_t **earliest_thread) {
     node_t *running_node = list_find(thrs, running_thr, NULL);
     mythr_t *next_ready = NULL;
-    mythr_t *minimum_sleeping = include_running ? running_thr : NULL;
+    mythr_t *minimum_sleeping = running_thread_sleeping ? running_thr : NULL;
 
+    // Full cycle around the thread queue to find any READY thread or the thread
+    // that needs to sleep the least
     for (node_t *node = running_node->next; node != running_node; node = node->next) {
         if (node == thrs->head)
             continue;
@@ -203,20 +219,17 @@ void switch_thread(enum thread_state running_next_state, mythr_t *next_thread) {
 }
 
 void alarm_op(enum alarm_op operation, struct itimerval *previous) {
-    no_int = !operation;
+    // no_int = !operation;
     switch (operation)
     {
         case DISABLE_ALL:
         case DISABLE:
-            // printf("disable\n");
             setitimer(ITIMER_PROF, &disarmed_alarm, previous);
             break;
         case ENABLE_PREVIOUS:
-            // printf("previous %ld\n", previous->it_interval.tv_usec);
             setitimer(ITIMER_PROF, previous, NULL);
             break;
         case RESET:
-            // printf("reset\n");
             setitimer(ITIMER_PROF, &default_alarm, previous);
             break;
     }
@@ -239,16 +252,16 @@ void sleep_until(unsigned long long timestamp) {
 }
 
 void thread_timeout_handler(int signum) {
-    if (no_int)
-        return;
-    // alarm_op(DISABLE_ALL, NULL);
-    // printf("alarm_start\n");
+    // if (no_int)
+    //     return;
 
     run_scheduler(running_thr->state);
-    // printf("alarm_exit\n");
 }
 
 int mythreads_init() {
+    if (thrs != NULL) //Prevent double initialization
+        return 1;
+    
     //Initialize thread and add mythr_t to internal array
     thrs = list_init();
     sems = list_init();
@@ -269,17 +282,17 @@ int mythreads_init() {
     disarmed_alarm.it_value.tv_sec = 0;
     disarmed_alarm.it_value.tv_usec = 0;
 
-    //Set signal handler for SIGALRM and SIGINT
+    //Set signal handler for SIGPROF and SIGINT
     struct sigaction alarm_action;
     sigset_t blocked_sigs;
     sigemptyset(&blocked_sigs);
-    sigaddset(&blocked_sigs, SIGINT);
-    sigaddset(&blocked_sigs, SIGALRM);
+    // sigaddset(&blocked_sigs, SIGINT);
+    sigaddset(&blocked_sigs, SIGPROF);
     alarm_action.sa_handler = thread_timeout_handler;
     alarm_action.sa_mask = blocked_sigs;
     alarm_action.sa_flags = 0;
     sigaction(SIGPROF, &alarm_action, NULL);
-    sigaction(SIGINT, &alarm_action, NULL);
+    // sigaction(SIGINT, &alarm_action, NULL);
 
     //Initialize main mythr_t struct
     main.joining_on = NULL;
@@ -341,7 +354,7 @@ int mythreads_create(mythr_t *thr, void (body)(void *), void *arg) {
 
     //Start alarm if this was the second thread or restore previous running time
     if (thrs->size == 2)
-        alarm_op(RESET, &previous_alarm);
+        alarm_op(RESET, NULL);
     else 
         alarm_op(ENABLE_PREVIOUS, &previous_alarm);
     
@@ -394,8 +407,11 @@ int mythreads_sem_create(mysem_t *s, int val) {
     //Initialize mysem_t struct
     s->val = val;
     s->waiting = list_init();
-    if (s->waiting == NULL)
+    if (s->waiting == NULL) {
         list_remove(sems, s);
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+        return -1;
+    }
 
     alarm_op(ENABLE_PREVIOUS, &previous_alarm);
     return 1;
@@ -434,7 +450,7 @@ int mythreads_sem_up(mysem_t *s) {
     }
     ++s->val;
     
-    //Remove waiting if needed
+    //Remove next waiting thread if needed
     if (s->val <= 0) {
         mythr_t *last = (mythr_t *) list_remove_index(s->waiting, s->waiting->size - 1);
         last->state = READY;
