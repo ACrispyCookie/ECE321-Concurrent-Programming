@@ -215,7 +215,6 @@ void switch_thread(enum thread_state running_next_state, mythr_t *next_thread) {
     running_thr = next_thread;
 
     next_thread->state = READY;
-    fflush(stdout);
     mycoroutine_switchto(&next_thread->co);
     alarm_op(RESET, NULL);
 }

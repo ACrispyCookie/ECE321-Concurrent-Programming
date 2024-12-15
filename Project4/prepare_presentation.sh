@@ -3,6 +3,12 @@
 CLEAR=$1
 
 echo "Clearing binaries folders..."
+cd assignment1
+make clear_resources
+cd ../project1_assignment1
+make clear_resources
+cd ..
+
 for i in {1..3}; do
   target_folder="assignment$i/target"
 
