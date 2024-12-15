@@ -23,6 +23,16 @@ for i in {1..1}; do
     echo "$target_folder does not exist"
   fi
 done
+for i in {3..3}; do
+  target_folder="project1_assignment$i/target"
+
+  if [ -d "$target_folder" ]; then
+    rm -rf "$target_folder"/*
+    echo "Emptied $target_folder"
+  else
+    echo "$target_folder does not exist"
+  fi
+done
 
 target_folder="list/target"
 

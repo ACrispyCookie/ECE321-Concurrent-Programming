@@ -41,8 +41,8 @@ typedef struct mythread {
 /*
     Struct describing a binary semaphore.
     Fields:
-    unsigned int id - The semaphore ID. Should be set to -1 before calling mysem_init.
     int val - The value of the semaphore. Should never be touched.
+    list_t *waiting - The list of the waiting threads in the semaphore 
 */
 typedef struct mysem {
     int val;
