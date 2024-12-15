@@ -96,6 +96,7 @@ static struct itimerval default_alarm, disarmed_alarm;
 static mythr_t main;
 static mythr_t *running_thr;
 static list_t *thrs;
+static list_t *sems;
 
 void run_scheduler(enum thread_state state) {
     alarm_op(DISABLE_ALL, NULL);
@@ -250,7 +251,8 @@ void thread_timeout_handler(int signum) {
 int mythreads_init() {
     //Initialize thread and add mythr_t to internal array
     thrs = list_init();
-    if (thrs == NULL)
+    sems = list_init();
+    if (thrs == NULL || sems == NULL)
         return -1;
     if (list_add(thrs, &main) == -1)
         return -1;
@@ -375,7 +377,96 @@ int mythreads_destroy(mythr_t *thr) {
     return 1;
 }
 
+int mythreads_sem_create(mysem_t *s, int val) {
+    struct itimerval previous_alarm;
+    alarm_op(DISABLE_ALL, &previous_alarm);
+    if (list_find(sems, s, NULL) != NULL) {
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+        return -1;
+    }
+
+     //Initialize semaphore and add mysem_t to internal list
+    if (list_add(sems, s) == -1) {
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+        return -1;
+    }
+
+    //Initialize mysem_t struct
+    s->val = val;
+    s->waiting = list_init();
+    if (s->waiting == NULL)
+        list_remove(sems, s);
+
+    alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+    return 1;
+}
+
+int mythreads_sem_down(mysem_t *s) {
+    struct itimerval previous_alarm;
+    alarm_op(DISABLE_ALL, &previous_alarm);
+    if (list_find(sems, s, NULL) == NULL) {
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+        return -1;
+    }
+    
+    --s->val;
+    if (s->val == 0) {
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+        return 0;
+    }
+
+    list_add(s->waiting, running_thr);
+    run_scheduler(BLOCKED);
+    return 1;
+}
+
+int mythreads_sem_up(mysem_t *s) {
+    struct itimerval previous_alarm;
+    alarm_op(DISABLE_ALL, &previous_alarm);
+    if (list_find(sems, s, NULL) == NULL) {
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+        return -1;
+    }
+    
+    if (s->val == 1) {
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+        return 0;
+    }
+    ++s->val;
+    
+    //Remove waiting if needed
+    if (s->val <= 0) {
+        mythr_t *last = (mythr_t *) list_remove_index(s->waiting, s->waiting->size - 1);
+        last->state = READY;
+    }
+
+    alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+    return 1;
+}
+
+int mythreads_sem_destroy(mysem_t *s) {
+    struct itimerval previous_alarm;
+    alarm_op(DISABLE_ALL, &previous_alarm);
+    if (list_find(sems, s, NULL) == NULL) {
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+        return -1;
+    }
+
+    //Destroy waiting list of semaphore
+    list_destroy(s->waiting);
+
+    //Remove thread from internal list
+    if (list_remove(sems, s) == -1) {
+        alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+        return -1;
+    }
+
+    alarm_op(ENABLE_PREVIOUS, &previous_alarm);
+    return 1;
+}
+
 void mythreads_exit() {
     mycoroutine_destroy(&main.co);
     list_destroy(thrs);
+    list_destroy(sems);
 }

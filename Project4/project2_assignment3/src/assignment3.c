@@ -33,12 +33,25 @@ int main(int argc, char *argv[]) {
     mysem_t mtx[2]; 
     mysem_t q[2];
     mysem_t bridge_access;
+    if (mythreads_init() == -1) {
+        printf("Error initializing threads environment!\n");
+    }
 
-    mythreads_sem_create(&mtx[0], 1);
-    mythreads_sem_create(&mtx[1], 1);
-    mythreads_sem_create(&(q[0]), 1);
-    mythreads_sem_create(&(q[1]), 1);
-    mythreads_sem_create(&bridge_access, 1);
+    if(mythreads_sem_create(&mtx[0], 1) == -1) {
+        printf("Error creating semaphore!\n");
+    }
+    if(mythreads_sem_create(&mtx[1], 1) == -1) {
+        printf("Error creating semaphore!\n");
+    }
+    if(mythreads_sem_create(&(q[0]), 1) == -1) {
+        printf("Error creating semaphore!\n");
+    }
+    if(mythreads_sem_create(&(q[1]), 1) == -1) {
+        printf("Error creating semaphore!\n");
+    }
+    if(mythreads_sem_create(&bridge_access, 1) == -1) {
+        printf("Error creating semaphore!\n");
+    }
 
     //Initialize main variables
     car_info_t **cars_array = NULL;
@@ -61,6 +74,7 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < car_count; i++) {
         mythreads_join(&(cars_array[i]->thread));
+        mythreads_destroy(&(cars_array[i]->thread));
         free(cars_array[i]);
     }
     free(cars_array);
@@ -70,6 +84,7 @@ int main(int argc, char *argv[]) {
     mythreads_sem_destroy(&(q[0]));
     mythreads_sem_destroy(&(q[1]));
     mythreads_sem_destroy(&bridge_access);
+    mythreads_exit();
     
     return 0;
 }

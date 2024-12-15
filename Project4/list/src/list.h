@@ -49,11 +49,24 @@
         void *data - The data of the node.
 
         Returns:
-        1 if the new node was removed successfully.
-        0 if the new node didn't exist in the list.
+        1 if the node was removed successfully.
+        0 if the node didn't exist in the list.
         -1 if an error occurred.
     */
     int list_remove(list_t *list, void *data);
+
+    /*
+        Removes the node in the given index from the list.
+
+        Parameters:
+        list_t *list - The list to remove the node from.
+        unsigned int index - The index of the node to remove.
+
+        Returns:
+        a pointer to the node of the list found or
+        NULL if the node was not found or if an error occurred.
+    */
+    void *list_remove_index(list_t *list, unsigned int index);
 
     /*
         Find the given struct in the list.

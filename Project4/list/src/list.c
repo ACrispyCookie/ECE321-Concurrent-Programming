@@ -1,6 +1,7 @@
 #include "list.h"
 #include <stddef.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 /*
     Allocates memory for a new node
@@ -27,7 +28,7 @@ list_t *list_init() {
 }
 
 int list_add(list_t *list, void *data) {
-    if (list == NULL)
+    if (list == NULL) 
         return LIST_ERROR;
     if (list_find(list, data, NULL) != NULL)
         return LIST_ALREADY;
@@ -55,6 +56,26 @@ int list_remove(list_t *list, void *data) {
     free(found_node);
     list->size--;
     return LIST_SUCCESS;
+}
+
+void *list_remove_index(list_t *list, unsigned int index) {
+    if (list == NULL)
+        return NULL;
+    if (index >= list->size)
+        return NULL;
+
+    node_t *previous_node = list->head;
+    node_t *found_node = list->head->next;
+    for (int i = 0; i < index; i++) {
+        found_node = found_node->next;
+        previous_node = previous_node->next;
+    }
+    
+    previous_node->next = found_node->next;
+    void *data = found_node->data;
+    free(found_node);
+    list->size--;
+    return data;
 }
 
 node_t *list_find(list_t *list, void *data, node_t **previous_return) {
