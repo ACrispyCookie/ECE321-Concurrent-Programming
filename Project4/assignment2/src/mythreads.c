@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <signal.h>
 
+// Do not change the order of this enum
 enum alarm_op {
     DISABLE_ALL, // Disable interrupting too
     DISABLE, // Disable only alarm
@@ -214,6 +215,7 @@ void switch_thread(enum thread_state running_next_state, mythr_t *next_thread) {
     running_thr = next_thread;
 
     next_thread->state = READY;
+    fflush(stdout);
     mycoroutine_switchto(&next_thread->co);
     alarm_op(RESET, NULL);
 }
@@ -224,13 +226,13 @@ void alarm_op(enum alarm_op operation, struct itimerval *previous) {
     {
         case DISABLE_ALL:
         case DISABLE:
-            setitimer(ITIMER_PROF, &disarmed_alarm, previous);
+            setitimer(TIMER_TYPE, &disarmed_alarm, previous);
             break;
         case ENABLE_PREVIOUS:
-            setitimer(ITIMER_PROF, previous, NULL);
+            setitimer(TIMER_TYPE, previous, NULL);
             break;
         case RESET:
-            setitimer(ITIMER_PROF, &default_alarm, previous);
+            setitimer(TIMER_TYPE, &default_alarm, previous);
             break;
     }
 }
@@ -282,16 +284,16 @@ int mythreads_init() {
     disarmed_alarm.it_value.tv_sec = 0;
     disarmed_alarm.it_value.tv_usec = 0;
 
-    //Set signal handler for SIGPROF and SIGINT
+    //Set signal handler for SIGALRM and SIGINT
     struct sigaction alarm_action;
     sigset_t blocked_sigs;
     sigemptyset(&blocked_sigs);
     // sigaddset(&blocked_sigs, SIGINT);
-    sigaddset(&blocked_sigs, SIGPROF);
+    sigaddset(&blocked_sigs, ALARM_TYPE);
     alarm_action.sa_handler = thread_timeout_handler;
     alarm_action.sa_mask = blocked_sigs;
     alarm_action.sa_flags = 0;
-    sigaction(SIGPROF, &alarm_action, NULL);
+    sigaction(ALARM_TYPE, &alarm_action, NULL);
     // sigaction(SIGINT, &alarm_action, NULL);
 
     //Initialize main mythr_t struct

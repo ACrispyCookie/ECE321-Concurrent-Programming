@@ -4,7 +4,9 @@
 #include "../../list/src/list.h"
 #include <sys/time.h>
 
-#define THREAD_TIMEOUT_TIME 1
+#define THREAD_TIMEOUT_TIME 1000
+#define ALARM_TYPE SIGALRM
+#define TIMER_TYPE ITIMER_REAL 
 
 /*
     Enum used to describe the runtime of a thread.
