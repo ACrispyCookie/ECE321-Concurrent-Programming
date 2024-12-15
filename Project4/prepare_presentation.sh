@@ -23,7 +23,7 @@ for i in {1..1}; do
     echo "$target_folder does not exist"
   fi
 done
-for i in {3..4}; do
+for i in {2..4}; do
   target_folder="project2_assignment$i/target"
 
   if [ -d "$target_folder" ]; then
