@@ -1,3 +1,6 @@
+clear_resources: 
+	rm -rf ./resources/*.copy ./resources/*.copy2
+
 ./target/test: ./target/test.o ./target/pipes.o ../assignment2/target/libmythreads.a
 	gcc -Wall -g ./target/test.o ./target/pipes.o -o ./target/test -lmythreads -L../assignment2/target/
 

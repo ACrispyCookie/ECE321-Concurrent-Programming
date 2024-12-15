@@ -109,6 +109,9 @@ int main(const int argc, char *argv[]) {
     free(filename_copy);
     free(filename_copy2);
     free(copier);
+    mythreads_destroy(&thread1);
+    mythreads_destroy(&thread2);
+    mythreads_exit();
     return 0;
 }
 

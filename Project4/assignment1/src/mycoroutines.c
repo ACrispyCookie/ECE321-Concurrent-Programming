@@ -1,7 +1,12 @@
 #include "mycoroutines.h"
 #include "../../list/src/list.h"
+#include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <signal.h>
+#include <sys/time.h>
+#include <time.h>
 #include <valgrind/valgrind.h>
 
 static co_t *current_context, *main_context;

@@ -4,7 +4,7 @@
 
 #include "../../assignment2/src/mythreads.h"
 
-#define N 1000
+#define N 500
 
 /*
     The function run by the first thread created that reads the
@@ -21,27 +21,28 @@ void thr1(void *arg);
 
 int main(const int argc, char *argv[]) {
     mythreads_init();
-    mythr_t thrs[N];
+    // mythr_t *thr = (mythr_t *) malloc(N * sizeof(mythr_t));
+    mythr_t thr[N];
 
     for (int i = 0; i < N; i++) {
-        printf("Creating thread %d\n", i);
-        mythreads_create(&(thrs[i]), thr1, NULL);
-        // printf("Waiting thread %d\n", i);
-        // mythreads_join(&thrs[i]);
-        // printf("Destroying thread %d\n", i);
-        // mythreads_destroy(&thrs[i]);
+        printf("Creating thread %p\n", &thr[i]);
+        mythreads_create(&thr[i], thr1, &thr[i]);
+        int j = 0;
+        while (j < 10000000)
+            j++;
     }
 
     for (int i = 0; i < N; i++) {
-        printf("Waiting thread %p\n", &(thrs[i]));
-        mythreads_join(&(thrs[i]));
-        printf("Destroying thread %d\n", i);
-        mythreads_destroy(&(thrs[i]));
+        printf("Waiting thread %p\n", &thr[i]);
+        mythreads_join(&thr[i]);
+        printf("Destroying thread %p\n", &thr[i]);
+        mythreads_destroy(&thr[i]);
     }
+    // free(thr);
     mythreads_exit();
     return 0;
 }
 
 void thr1(void *arg) {
-    printf("Hello from thread!\n");
+    printf("Hello from thread %p!\n", arg);
 }

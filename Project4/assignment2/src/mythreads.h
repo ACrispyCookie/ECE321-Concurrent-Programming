@@ -4,7 +4,7 @@
 #include "../../list/src/list.h"
 #include <sys/time.h>
 
-#define THREAD_TIMEOUT_TIME 1000
+#define THREAD_TIMEOUT_TIME 1
 
 /*
     Enum used to describe the runtime of a thread.

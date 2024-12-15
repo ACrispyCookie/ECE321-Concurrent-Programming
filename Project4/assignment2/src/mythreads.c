@@ -151,6 +151,7 @@ void run_thread(void *arg) {
     void (*body) (void *) = runnable->body;
     void *body_arg = runnable->arg;
 
+    alarm_op(RESET, NULL);
     body(body_arg);
     run_scheduler(TERMINATED);
 }
@@ -196,8 +197,8 @@ void switch_thread(enum thread_state running_next_state, mythr_t *next_thread) {
     running_thr = next_thread;
 
     next_thread->state = READY;
-    alarm_op(RESET, NULL);
     mycoroutine_switchto(&next_thread->co);
+    alarm_op(RESET, NULL);
 }
 
 void alarm_op(enum alarm_op operation, struct itimerval *previous) {
@@ -206,16 +207,16 @@ void alarm_op(enum alarm_op operation, struct itimerval *previous) {
     {
         case DISABLE_ALL:
         case DISABLE:
-            setitimer(ITIMER_REAL, &disarmed_alarm, previous);
-            // printf("disable alarm\n");
+            // printf("disable\n");
+            setitimer(ITIMER_PROF, &disarmed_alarm, previous);
             break;
         case ENABLE_PREVIOUS:
-            // printf("enable previous alarm\n");
-            setitimer(ITIMER_REAL, previous, NULL);
+            // printf("previous %ld\n", previous->it_interval.tv_usec);
+            setitimer(ITIMER_PROF, previous, NULL);
             break;
         case RESET:
-            // printf("reset alarm\n");
-            setitimer(ITIMER_REAL, &default_alarm, previous);
+            // printf("reset\n");
+            setitimer(ITIMER_PROF, &default_alarm, previous);
             break;
     }
 }
@@ -237,12 +238,13 @@ void sleep_until(unsigned long long timestamp) {
 }
 
 void thread_timeout_handler(int signum) {
-    // printf("alarm hit\n");
     if (no_int)
         return;
+    // alarm_op(DISABLE_ALL, NULL);
+    // printf("alarm_start\n");
 
     run_scheduler(running_thr->state);
-    // printf("alarm exit\n");
+    // printf("alarm_exit\n");
 }
 
 int mythreads_init() {
@@ -274,7 +276,7 @@ int mythreads_init() {
     alarm_action.sa_handler = thread_timeout_handler;
     alarm_action.sa_mask = blocked_sigs;
     alarm_action.sa_flags = 0;
-    sigaction(SIGALRM, &alarm_action, NULL);
+    sigaction(SIGPROF, &alarm_action, NULL);
     sigaction(SIGINT, &alarm_action, NULL);
 
     //Initialize main mythr_t struct
@@ -301,7 +303,6 @@ int mythreads_sleep(int secs) {
 int mythreads_join(mythr_t *thr) {
     struct itimerval previous;
     alarm_op(DISABLE_ALL, &previous);
-    // printf("join start\n");
     if (thr == NULL || thr->state == TERMINATED) {
         alarm_op(ENABLE_PREVIOUS, &previous);
         return 1;
