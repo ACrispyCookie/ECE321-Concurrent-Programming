@@ -263,7 +263,7 @@ void thread_timeout_handler(int signum) {
     run_scheduler(running_thr->state);
 }
 
-int mythreads_init(unsigned int thread_timeout) {
+int mythreads_init() {
     if (thrs != NULL) //Prevent double initialization
         return 1;
     
@@ -278,9 +278,9 @@ int mythreads_init(unsigned int thread_timeout) {
     
     //Initialize alarms for the schedulers
     default_alarm.it_interval.tv_sec = 0;
-    default_alarm.it_interval.tv_usec = thread_timeout;
+    default_alarm.it_interval.tv_usec = THREAD_TIMEOUT_TIME;
     default_alarm.it_value.tv_sec = 0;
-    default_alarm.it_value.tv_usec = thread_timeout;
+    default_alarm.it_value.tv_usec = THREAD_TIMEOUT_TIME;
 
     disarmed_alarm.it_interval.tv_sec = 0;
     disarmed_alarm.it_interval.tv_usec = 0;
