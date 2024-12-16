@@ -3,7 +3,7 @@ all: ./target/test
 clear: clear_resources ./target/test.o ./target/test ./target/pipes.o
 	rm -rf ./target/test.o ./target/test ./target/pipes.o
 
-clear_resources: 
+clear_resources:
 	rm -rf ./resources/*.copy ./resources/*.copy2
 
 ./target/test: ./target/test.o ./target/pipes.o ../assignment2/target/libmythreads.a

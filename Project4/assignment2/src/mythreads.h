@@ -58,7 +58,7 @@ typedef struct mysem {
     1 for success
     -1 if an error occurred
 */
-int mythreads_init();
+int mythreads_init(unsigned int thread_timeout);
 
 /*
     Initializes a new thread.

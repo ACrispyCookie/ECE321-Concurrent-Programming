@@ -92,6 +92,7 @@ void thread_timeout_handler(int signum);
 // Variables for interrupting and default alarms
 // static bool no_int = false;
 static struct itimerval default_alarm, disarmed_alarm;
+static struct sigaction ignore, handle;
 
 // Thread array and main thread related
 static mythr_t main;
@@ -225,12 +226,15 @@ void alarm_op(enum alarm_op operation, struct itimerval *previous) {
     {
         case DISABLE_ALL:
         case DISABLE:
+            sigaction(ALARM_TYPE, &ignore, NULL);
             setitimer(TIMER_TYPE, &disarmed_alarm, previous);
             break;
         case ENABLE_PREVIOUS:
+            sigaction(ALARM_TYPE, &handle, NULL);
             setitimer(TIMER_TYPE, previous, NULL);
             break;
         case RESET:
+            sigaction(ALARM_TYPE, &handle, NULL);
             setitimer(TIMER_TYPE, &default_alarm, previous);
             break;
     }
@@ -259,7 +263,7 @@ void thread_timeout_handler(int signum) {
     run_scheduler(running_thr->state);
 }
 
-int mythreads_init() {
+int mythreads_init(unsigned int thread_timeout) {
     if (thrs != NULL) //Prevent double initialization
         return 1;
     
@@ -274,9 +278,9 @@ int mythreads_init() {
     
     //Initialize alarms for the schedulers
     default_alarm.it_interval.tv_sec = 0;
-    default_alarm.it_interval.tv_usec = THREAD_TIMEOUT_TIME;
+    default_alarm.it_interval.tv_usec = thread_timeout;
     default_alarm.it_value.tv_sec = 0;
-    default_alarm.it_value.tv_usec = THREAD_TIMEOUT_TIME;
+    default_alarm.it_value.tv_usec = thread_timeout;
 
     disarmed_alarm.it_interval.tv_sec = 0;
     disarmed_alarm.it_interval.tv_usec = 0;
@@ -284,15 +288,17 @@ int mythreads_init() {
     disarmed_alarm.it_value.tv_usec = 0;
 
     //Set signal handler for SIGALRM and SIGINT
-    struct sigaction alarm_action;
-    sigset_t blocked_sigs;
+    sigset_t blocked_sigs, empty_set;
+    sigemptyset(&empty_set);
     sigemptyset(&blocked_sigs);
     // sigaddset(&blocked_sigs, SIGINT);
     sigaddset(&blocked_sigs, ALARM_TYPE);
-    alarm_action.sa_handler = thread_timeout_handler;
-    alarm_action.sa_mask = blocked_sigs;
-    alarm_action.sa_flags = 0;
-    sigaction(ALARM_TYPE, &alarm_action, NULL);
+    handle.sa_handler = thread_timeout_handler;
+    handle.sa_mask = blocked_sigs;
+    handle.sa_flags = 0;
+    ignore.sa_handler = SIG_IGN;
+    ignore.sa_mask = empty_set;
+    ignore.sa_flags = 0;
     // sigaction(SIGINT, &alarm_action, NULL);
 
     //Initialize main mythr_t struct

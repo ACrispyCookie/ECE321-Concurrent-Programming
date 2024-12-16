@@ -75,12 +75,13 @@ size_t write_file_to_pipe(const char *filename, unsigned int pipe_id);
 size_t write_pipe_to_file(unsigned int pipe_id, const char *filename);
 
 int main(const int argc, char *argv[]) {
-    if (argc != 2) {
-        printf("Usage: %s <file name>\n", argv[0]);
+    if (argc != 3) {
+        printf("Usage: %s <file name> <timeout>\n", argv[0]);
         return 1;
     }
 
-    mythreads_init();
+    int timeout = atoi(argv[2]);
+    mythreads_init(timeout);
     copier_t *copier = malloc(sizeof(copier_t));
     copier->pipe_id2 = pipe_open(64);
     copier->pipe_id1 = pipe_open(64);
@@ -97,11 +98,14 @@ int main(const int argc, char *argv[]) {
     copier->filename_copy2 = filename_copy2;
 
     mythr_t thread1, thread2;
+    // printf("test\n");
     const int res1 = mythreads_create(&thread1, thr1, copier);
+    // printf("test1\n");
     if (res1 == -1)
         printf("Failed to create thread 1: %d\n", res1);
 
     const int res2 = mythreads_create(&thread2, thr2, copier);
+    // printf("test2\n");
     if (res2 == -1)
         printf("Failed to create thread 2: %d\n", res2);
     while(!copier->done1 || !copier->done2) {}
