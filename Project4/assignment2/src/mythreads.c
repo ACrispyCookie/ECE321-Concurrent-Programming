@@ -269,7 +269,7 @@ void thread_timeout_handler(int signum) {
     run_scheduler(running_thr->state);
 }
 
-int mythreads_init(unsigned int thread_timeout) {
+int mythreads_init() {
     if (thrs != NULL) //Prevent double initialization
         return 1;
     
@@ -284,9 +284,9 @@ int mythreads_init(unsigned int thread_timeout) {
     
     //Initialize alarms for the schedulers
     default_alarm.it_interval.tv_sec = 0;
-    default_alarm.it_interval.tv_usec = thread_timeout;
+    default_alarm.it_interval.tv_usec = THREAD_TIMEOUT_TIME;
     default_alarm.it_value.tv_sec = 0;
-    default_alarm.it_value.tv_usec = thread_timeout;
+    default_alarm.it_value.tv_usec = THREAD_TIMEOUT_TIME;
 
     disarmed_alarm.it_interval.tv_sec = 0;
     disarmed_alarm.it_interval.tv_usec = 0;
@@ -328,21 +328,6 @@ int mythreads_sleep(int secs) {
     return 1;
 }
 
-int mythreads_scanf(const char *format, ...) {
-    running_thr->waiting_input = true;
-
-    int ret;
-    va_list args;
-    do {
-        va_start(args, format);
-        ret = vscanf(format, args);
-        va_end(args);
-    } while (ret == EOF && errno == EINTR);
-
-    running_thr->waiting_input = false;
-    return ret;
-}
-
 int mythreads_join(mythr_t *thr) {
     struct itimerval previous;
     alarm_op(DISABLE_ALL, &previous);
@@ -373,7 +358,6 @@ int mythreads_create(mythr_t *thr, void (body)(void *), void *arg) {
     //Initialize mythr_t struct
     thr->state = READY;
     thr->joining_on = NULL;
-    thr->waiting_input = false;
     thr->runnable.body = body;
     thr->runnable.arg = arg;
     if (mycoroutine_create(&thr->co, run_thread, &thr->runnable) == -1) {
