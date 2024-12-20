@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdarg.h>
+#include <errno.h>
 
 // Do not change the order of this enum
 enum alarm_op {
@@ -110,7 +112,7 @@ void run_scheduler(enum thread_state state) {
                 break;
             case BLOCKED:
                 printf("============================== MYTHREADS ==============================\n");
-                printf("Deadlock detected! Either all threads are blocked or terminated an the last one\n");
+                printf("Deadlock detected! Either all threads are blocked or terminated and the last one\n");
                 printf("passing the CPU to the scheduler is also terminating or becoming blocked!\n");
                 printf("The program will now exit.\n");
                 mythreads_exit();
@@ -147,7 +149,7 @@ void run_scheduler(enum thread_state state) {
         case BLOCKED: {
             if (earliest_thread == NULL) {
                 printf("============================== MYTHREADS ==============================\n");
-                printf("Deadlock detected! Either all threads are blocked or terminated an the last one\n");
+                printf("Deadlock detected! Either all threads are blocked or terminated and the last one\n");
                 printf("passing the CPU to the scheduler is also terminating or becoming blocked!\n");
                 printf("The program will now exit.\n");
                 mythreads_exit();
@@ -165,7 +167,7 @@ void run_thread(void *arg) {
     void (*body) (void *) = runnable->body;
     void *body_arg = runnable->arg;
 
-    alarm_op(RESET, NULL);
+    alarm_op(RESET, NULL); // If next thread picked by the scheduler hasn't run yet it needs to reset the alarm.
     body(body_arg);
     run_scheduler(TERMINATED);
 }
@@ -217,7 +219,7 @@ void switch_thread(enum thread_state running_next_state, mythr_t *next_thread) {
 
     next_thread->state = READY;
     mycoroutine_switchto(&next_thread->co);
-    alarm_op(RESET, NULL);
+    alarm_op(RESET, NULL); // When this thread gets the CPU back it resets the alarm for itself
 }
 
 void alarm_op(enum alarm_op operation, struct itimerval *previous) {
@@ -230,8 +232,12 @@ void alarm_op(enum alarm_op operation, struct itimerval *previous) {
             setitimer(TIMER_TYPE, &disarmed_alarm, previous);
             break;
         case ENABLE_PREVIOUS:
-            sigaction(ALARM_TYPE, &handle, NULL);
-            setitimer(TIMER_TYPE, previous, NULL);
+            if (previous->it_value.tv_usec == 0) // Time has run out but alarm didn't ring yet 
+                run_scheduler(READY);
+            else {
+                sigaction(ALARM_TYPE, &handle, NULL);
+                setitimer(TIMER_TYPE, previous, NULL);
+            }
             break;
         case RESET:
             sigaction(ALARM_TYPE, &handle, NULL);
@@ -263,7 +269,7 @@ void thread_timeout_handler(int signum) {
     run_scheduler(running_thr->state);
 }
 
-int mythreads_init() {
+int mythreads_init(unsigned int thread_timeout) {
     if (thrs != NULL) //Prevent double initialization
         return 1;
     
@@ -278,9 +284,9 @@ int mythreads_init() {
     
     //Initialize alarms for the schedulers
     default_alarm.it_interval.tv_sec = 0;
-    default_alarm.it_interval.tv_usec = THREAD_TIMEOUT_TIME;
+    default_alarm.it_interval.tv_usec = thread_timeout;
     default_alarm.it_value.tv_sec = 0;
-    default_alarm.it_value.tv_usec = THREAD_TIMEOUT_TIME;
+    default_alarm.it_value.tv_usec = thread_timeout;
 
     disarmed_alarm.it_interval.tv_sec = 0;
     disarmed_alarm.it_interval.tv_usec = 0;
@@ -322,6 +328,21 @@ int mythreads_sleep(int secs) {
     return 1;
 }
 
+int mythreads_scanf(const char *format, ...) {
+    running_thr->waiting_input = true;
+
+    int ret;
+    va_list args;
+    do {
+        va_start(args, format);
+        ret = vscanf(format, args);
+        va_end(args);
+    } while (ret == EOF && errno == EINTR);
+
+    running_thr->waiting_input = false;
+    return ret;
+}
+
 int mythreads_join(mythr_t *thr) {
     struct itimerval previous;
     alarm_op(DISABLE_ALL, &previous);
@@ -352,6 +373,7 @@ int mythreads_create(mythr_t *thr, void (body)(void *), void *arg) {
     //Initialize mythr_t struct
     thr->state = READY;
     thr->joining_on = NULL;
+    thr->waiting_input = false;
     thr->runnable.body = body;
     thr->runnable.arg = arg;
     if (mycoroutine_create(&thr->co, run_thread, &thr->runnable) == -1) {

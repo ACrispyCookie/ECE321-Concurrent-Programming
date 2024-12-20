@@ -3,6 +3,7 @@
 #include "../../assignment1/src/mycoroutines.h"
 #include "../../list/src/list.h"
 #include <sys/time.h>
+#include <stdbool.h>
 
 #define THREAD_TIMEOUT_TIME 7000
 #define ALARM_TYPE SIGALRM
@@ -36,6 +37,7 @@ typedef struct mythread {
     thread_runnable_t runnable;
     co_t co;
     enum thread_state state;
+    bool waiting_input;
     unsigned long long sleep_until;
     struct mythread *joining_on;
 } mythr_t;
@@ -58,7 +60,7 @@ typedef struct mysem {
     1 for success
     -1 if an error occurred
 */
-int mythreads_init();
+int mythreads_init(unsigned int thread_timeout);
 
 /*
     Initializes a new thread.
@@ -92,6 +94,18 @@ int mythreads_yield();
     1 for success
 */
 int mythreads_sleep(int secs);
+
+/*
+    scanf wrapper that isn't interruptable
+    by the context switching of the library
+
+    Parameters:
+    const char *format - The format string to use
+
+    Returns:
+    the return code of scanf
+*/
+int mythreads_scanf(const char *format, ...);
 
 /*
     Waits for the given thread to finish.

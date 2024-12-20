@@ -98,14 +98,14 @@ int main(const int argc, char *argv[]) {
     copier->filename_copy2 = filename_copy2;
 
     mythr_t thread1, thread2;
-    // printf("test\n");
+    fprintf(stdout, "test\n");
     const int res1 = mythreads_create(&thread1, thr1, copier);
-    // printf("test1\n");
+    fprintf(stdout, "test1\n");
     if (res1 == -1)
         printf("Failed to create thread 1: %d\n", res1);
 
     const int res2 = mythreads_create(&thread2, thr2, copier);
-    // printf("test2\n");
+    fprintf(stdout, "test2\n");
     if (res2 == -1)
         printf("Failed to create thread 2: %d\n", res2);
     while(!copier->done1 || !copier->done2) {}
@@ -147,8 +147,9 @@ size_t write_file_to_pipe(const char *filename, const unsigned int pipe_id) {
             break;
         pipe_write(pipe_id, buffer);
         if (total_bytes % 100 == 0) {
-            printf("\rWritten %ld", total_bytes);
-            fflush(stdout);
+            //printf("\rWritten %ld", total_bytes);
+            //fflush(stdout);
+            printf("Written %ld\n", total_bytes);
         }
     }
     pipe_writeDone(pipe_id);
