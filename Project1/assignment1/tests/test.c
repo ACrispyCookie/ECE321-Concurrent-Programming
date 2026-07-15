@@ -103,7 +103,11 @@ int main(const int argc, char *argv[]) {
     const int res2 = pthread_create(&thread2, NULL, thr2, copier);
     if (res2)
         printf("Failed to create thread 2: %d\n", res2);
-    while(!copier->done1 || !copier->done2) {}
+
+    if (!res1)
+        pthread_join(thread1, NULL);
+    if (!res2)
+        pthread_join(thread2, NULL);
 
     free(filename_copy);
     free(filename_copy2);
@@ -133,7 +137,7 @@ size_t write_file_to_pipe(const char *filename, const unsigned int pipe_id) {
     char buffer;
     size_t bytes_read = 0;
     size_t total_bytes = 0;
-    FILE *file = fopen(filename, "r");
+    FILE *file = fopen(filename, "rb");
     while(1) {
         bytes_read = fread(&buffer, sizeof(char), 1, file);
         total_bytes += bytes_read;
@@ -149,7 +153,7 @@ size_t write_file_to_pipe(const char *filename, const unsigned int pipe_id) {
 size_t write_pipe_to_file(const unsigned int pipe_id, const char *filename) {
     char buffer;
     size_t total_bytes = 0;
-    FILE *file = fopen(filename, "w");
+    FILE *file = fopen(filename, "wb");
     while (1) {
         const int read_res = pipe_read(pipe_id, &buffer);
         if (read_res == 0)

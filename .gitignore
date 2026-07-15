@@ -1,0 +1,35 @@
+# Build outputs
+**/target/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.class
+*.jar
+
+# Generated runtime artifacts
+*.copy
+*.copy2
+*.copy.copy
+*.copy.copy2
+Project1/assignment3/tests/integers.bin
+results.csv
+stability_results.csv
+execution_times.csv
+
+# Submission archives regenerated from source when needed
+*.tar
+*.zip
+
+# IDE / editor / OS files
+.idea/
+.vscode/
+*.iml
+*.swp
+*~
+.DS_Store
+
+# Java build directories
+Project3/assignment2_java/out/
+Project3/assignment2_java/build/

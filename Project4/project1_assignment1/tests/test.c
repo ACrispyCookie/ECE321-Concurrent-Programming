@@ -75,13 +75,12 @@ size_t write_file_to_pipe(const char *filename, unsigned int pipe_id);
 size_t write_pipe_to_file(unsigned int pipe_id, const char *filename);
 
 int main(const int argc, char *argv[]) {
-    if (argc != 3) {
-        printf("Usage: %s <file name> <timeout>\n", argv[0]);
+    if (argc != 2) {
+        printf("Usage: %s <file name>\n", argv[0]);
         return 1;
     }
 
-    int timeout = atoi(argv[2]);
-    mythreads_init(timeout);
+    mythreads_init();
     copier_t *copier = malloc(sizeof(copier_t));
     copier->pipe_id2 = pipe_open(64);
     copier->pipe_id1 = pipe_open(64);
@@ -98,17 +97,18 @@ int main(const int argc, char *argv[]) {
     copier->filename_copy2 = filename_copy2;
 
     mythr_t thread1, thread2;
-    fprintf(stdout, "test\n");
     const int res1 = mythreads_create(&thread1, thr1, copier);
-    fprintf(stdout, "test1\n");
     if (res1 == -1)
         printf("Failed to create thread 1: %d\n", res1);
 
     const int res2 = mythreads_create(&thread2, thr2, copier);
-    fprintf(stdout, "test2\n");
     if (res2 == -1)
         printf("Failed to create thread 2: %d\n", res2);
-    while(!copier->done1 || !copier->done2) {}
+
+    if (res1 != -1)
+        mythreads_join(&thread1);
+    if (res2 != -1)
+        mythreads_join(&thread2);
 
     free(filename_copy);
     free(filename_copy2);
@@ -139,7 +139,7 @@ size_t write_file_to_pipe(const char *filename, const unsigned int pipe_id) {
     char buffer;
     size_t bytes_read = 0;
     size_t total_bytes = 0;
-    FILE *file = fopen(filename, "r");
+    FILE *file = fopen(filename, "rb");
     while(1) {
         bytes_read = fread(&buffer, sizeof(char), 1, file);
         total_bytes += bytes_read;
@@ -147,9 +147,7 @@ size_t write_file_to_pipe(const char *filename, const unsigned int pipe_id) {
             break;
         pipe_write(pipe_id, buffer);
         if (total_bytes % 100 == 0) {
-            //printf("\rWritten %ld", total_bytes);
-            //fflush(stdout);
-            printf("Written %ld\n", total_bytes);
+            mythreads_yield();
         }
     }
     pipe_writeDone(pipe_id);
@@ -160,7 +158,7 @@ size_t write_file_to_pipe(const char *filename, const unsigned int pipe_id) {
 size_t write_pipe_to_file(const unsigned int pipe_id, const char *filename) {
     char buffer;
     size_t total_bytes = 0;
-    FILE *file = fopen(filename, "w");
+    FILE *file = fopen(filename, "wb");
     while (1) {
         const int read_res = pipe_read(pipe_id, &buffer);
         if (read_res == 0)

@@ -1,5 +1,5 @@
 ./target/test: ./target/test.o ./target/pipes.o
-	gcc -Wall -g ./target/test.o ./target/pipes.o -o ./target/test
+	gcc -Wall -g ./target/test.o ./target/pipes.o -o ./target/test -pthread
 
 ./target/test.o: ./tests/test.c ./src/pipes.h
 	gcc -Wall -g -c ./tests/test.c -o ./target/test.o
