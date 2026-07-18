@@ -4,8 +4,17 @@ Coursework repository for ECE321 Concurrent Programming. The projects are implem
 
 The repository includes root-level build and validation scripts so the assignments can be compiled and exercised from a clean checkout.
 
+## Standout work
+
+The strongest part of the repository is **Project 4**, where the earlier synchronization workloads are ported onto a custom coroutine and user-level threading runtime. Instead of only using pthreads or OS-provided blocking primitives, the project builds the scheduling layer itself and then runs real assignment workloads on top of it.
+
+- **Coroutine foundation:** `getcontext`, `makecontext`, `setcontext`, and `swapcontext` are wrapped into reusable coroutine primitives with explicit context switching.
+- **User-level thread runtime:** Project 4 adds round-robin scheduling, timer/signal-based preemption, `yield`, `sleep`, `join`, and runtime-level binary semaphores.
+- **Workload ports:** FIFO file transfer, primality workers, narrow bridge, train/passenger synchronization, and readers/writers are adapted to run on the custom runtime.
+- **Runtime validation:** the final assignments exercise the scheduler through realistic coordination patterns rather than isolated toy calls.
+
 <p align="center">
-  <img src="docs/images/ece321-project-map.svg" alt="ECE321 project map from pthread workloads to semaphores, monitors, coroutines, and user-level threads" width="100%">
+  <img src="docs/images/user-level-runtime.svg" alt="Project 4 coroutine and user-level thread runtime architecture" width="100%">
 </p>
 
 ## Requirements
@@ -63,6 +72,10 @@ scripts/list_assignments.sh
 
 ## Assignment overview
 
+<p align="center">
+  <img src="docs/images/ece321-project-map.svg" alt="ECE321 project map from pthread workloads to semaphores, monitors, coroutines, and user-level threads" width="100%">
+</p>
+
 | Directory | Assignment | Implementation summary |
 |---|---|---|
 | `Project1/assignment1` | 1.1 FIFO pipes | One-direction FIFO pipe library backed by a bounded ring buffer. The test program transfers a file through two pipes and validates `.copy` and `.copy2` outputs. |
@@ -85,10 +98,6 @@ scripts/list_assignments.sh
 | `Project4/project2_assignment2` | Assignment 2.2 port | Primality worker scheduler adapted to the user-level thread runtime. |
 | `Project4/project2_assignment3` | Assignment 2.3 port | Narrow bridge simulation adapted to the user-level thread runtime. |
 | `Project4/project2_assignment4` | Assignment 2.4 port | Train/passenger simulation adapted to the user-level thread runtime. |
-
-<p align="center">
-  <img src="docs/images/user-level-runtime.svg" alt="Project 4 coroutine and user-level thread runtime architecture" width="100%">
-</p>
 
 ## Running individual assignments
 
