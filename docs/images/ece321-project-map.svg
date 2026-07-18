@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1580" viewBox="0 0 1200 1580" role="img" aria-labelledby="title desc">
+  <title id="title">ECE321 concurrent programming project map</title>
+  <desc id="desc">Overview of ECE321 projects from pthread workloads to semaphores, monitor-style synchronization, coroutines, and user-level threads.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#07111f"/><stop offset="1" stop-color="#172554"/></linearGradient>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="116%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity=".28"/></filter>
+    <style>.title{font:800 46px Inter,Segoe UI,sans-serif;fill:#e0f2fe}.sub{font:500 24px Inter,Segoe UI,sans-serif;fill:#bfdbfe}.card{rx:28;fill:#0f172a;stroke:#334155;stroke-width:2.5;filter:url(#shadow)}.numBg{fill:#67e8f9}.num{font:800 22px Inter,Segoe UI,sans-serif;fill:#0f172a}.head{font:800 31px Inter,Segoe UI,sans-serif;fill:#f8fafc}.body{font:500 24px Inter,Segoe UI,sans-serif;fill:#cbd5e1}.small{font:500 20px Inter,Segoe UI,sans-serif;fill:#94a3b8}.pill{rx:13}.pillText{font:800 15px Inter,Segoe UI,sans-serif;fill:#0f172a}.p1{fill:#86efac}.p2{fill:#fbbf24}.p3{fill:#c084fc}.p4{fill:#fb7185}.chev{fill:#67e8f9}.icon{font:800 50px Inter,Segoe UI,sans-serif;fill:#fef3c7}.line{stroke:#67e8f9;stroke-width:7;stroke-linecap:round}.node{fill:#111827;stroke:#67e8f9;stroke-width:4}</style>
+  </defs>
+  <rect width="1200" height="1580" fill="url(#bg)"/>
+  <path d="M0 1430 C210 1375 370 1500 610 1438 C815 1390 990 1465 1200 1395 L1200 1580 L0 1580 Z" fill="#0f766e" opacity=".14"/>
+  <text x="60" y="74" class="title">ECE321 Concurrent Programming</text>
+  <text x="62" y="118" class="sub">A progression from pthread workloads to custom synchronization and user-level runtimes</text>
+
+  <g transform="translate(60,180)">
+    <rect width="1080" height="235" class="card"/><circle cx="52" cy="55" r="28" class="numBg"/><text x="52" y="63" text-anchor="middle" class="num">1</text>
+    <text x="95" y="64" class="head">Project 1 · pthread workloads</text>
+    <text x="95" y="112" class="body">Bounded FIFO pipes, master/worker primality testing,</text><text x="95" y="146" class="body">and recursive external mergesort with pthreads.</text>
+    <text x="95" y="190" class="small">Focus: shared memory, worker coordination, and data movement.</text>
+    <circle cx="805" cy="117" r="34" class="node"/><text x="805" y="126" text-anchor="middle" class="body">T1</text><circle cx="910" cy="117" r="34" class="node"/><text x="910" y="126" text-anchor="middle" class="body">T2</text><line x1="839" y1="117" x2="876" y2="117" class="line"/>
+    <rect x="965" y="98" width="100" height="38" class="pill p1"/><text x="1015" y="124" text-anchor="middle" class="pillText">PTHREAD</text>
+  </g>
+  <path d="M560 452 h80 l-40 54 z" class="chev"/>
+
+  <g transform="translate(60,535)">
+    <rect width="1080" height="235" class="card"/><circle cx="52" cy="55" r="28" class="numBg"/><text x="52" y="63" text-anchor="middle" class="num">2</text>
+    <text x="95" y="64" class="head">Project 2 · semaphore synchronization</text>
+    <text x="95" y="112" class="body">System V semaphore wrapper plus prime workers,</text><text x="95" y="146" class="body">narrow bridge, and train/passenger simulations.</text>
+    <text x="95" y="190" class="small">Focus: capacity limits, ordering rules, and starvation avoidance.</text>
+    <text x="825" y="134" text-anchor="middle" class="icon">sem</text><rect x="950" y="98" width="112" height="38" class="pill p2"/><text x="1006" y="124" text-anchor="middle" class="pillText">SYSV</text>
+  </g>
+  <path d="M560 807 h80 l-40 54 z" class="chev"/>
+
+  <g transform="translate(60,890)">
+    <rect width="1080" height="235" class="card"/><circle cx="52" cy="55" r="28" class="numBg"/><text x="52" y="63" text-anchor="middle" class="num">3</text>
+    <text x="95" y="64" class="head">Project 3 · monitor-style coordination</text>
+    <text x="95" y="112" class="body">The same synchronization problems are rewritten</text><text x="95" y="146" class="body">with monitor-style APIs and a Java master/worker version.</text>
+    <text x="95" y="190" class="small">Focus: condition-based coordination and clearer critical sections.</text>
+    <text x="810" y="134" text-anchor="middle" class="icon">{ }</text><rect x="930" y="98" width="132" height="38" class="pill p3"/><text x="996" y="124" text-anchor="middle" class="pillText">MONITOR</text>
+  </g>
+  <path d="M560 1162 h80 l-40 54 z" class="chev"/>
+
+  <g transform="translate(60,1245)">
+    <rect width="1080" height="245" class="card"/><circle cx="52" cy="55" r="28" class="numBg"/><text x="52" y="63" text-anchor="middle" class="num">4</text>
+    <text x="95" y="64" class="head">Project 4 · coroutines and user-level threads</text>
+    <text x="95" y="112" class="body">Coroutine primitives, round-robin user-level threads,</text><text x="95" y="146" class="body">timer preemption, joins, sleeps, and runtime semaphores.</text>
+    <text x="95" y="190" class="small">Focus: building a scheduler rather than only using one.</text>
+    <text x="800" y="137" text-anchor="middle" class="icon">uT</text><rect x="930" y="98" width="132" height="38" class="pill p4"/><text x="996" y="124" text-anchor="middle" class="pillText">RUNTIME</text>
+  </g>
+</svg>

@@ -4,6 +4,10 @@ Coursework repository for ECE321 Concurrent Programming. The projects are implem
 
 The repository includes root-level build and validation scripts so the assignments can be compiled and exercised from a clean checkout.
 
+<p align="center">
+  <img src="docs/images/ece321-project-map.svg" alt="ECE321 project map from pthread workloads to semaphores, monitors, coroutines, and user-level threads" width="100%">
+</p>
+
 ## Requirements
 
 - Linux environment
@@ -81,6 +85,10 @@ scripts/list_assignments.sh
 | `Project4/project2_assignment2` | Assignment 2.2 port | Primality worker scheduler adapted to the user-level thread runtime. |
 | `Project4/project2_assignment3` | Assignment 2.3 port | Narrow bridge simulation adapted to the user-level thread runtime. |
 | `Project4/project2_assignment4` | Assignment 2.4 port | Train/passenger simulation adapted to the user-level thread runtime. |
+
+<p align="center">
+  <img src="docs/images/user-level-runtime.svg" alt="Project 4 coroutine and user-level thread runtime architecture" width="100%">
+</p>
 
 ## Running individual assignments
 
