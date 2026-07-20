@@ -34,6 +34,8 @@ The strongest part of the repository is **Project 4**, where the earlier synchro
 
 ## Assignment overview
 
+Project handouts are collected under [`docs/handouts/`](docs/handouts/). The available project presentation PDFs are collected under [`docs/presentations/`](docs/presentations/). Project 1 does not currently have a recovered presentation artifact.
+
 <p align="center">
   <img src="docs/images/ece321-project-map.svg" alt="ECE321 project map from pthread workloads to semaphores, monitors, coroutines, and user-level threads" width="100%">
 </p>
