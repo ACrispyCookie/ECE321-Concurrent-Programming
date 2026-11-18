@@ -1,10 +1,8 @@
 # ECE321 — Concurrent Programming
 
-![C](https://img.shields.io/badge/C-systems-blue)
-![Java](https://img.shields.io/badge/Java-concurrency-orange)
-![POSIX Threads](https://img.shields.io/badge/POSIX-pthreads-green)
-![Synchronization](https://img.shields.io/badge/Synchronization-semaphores%20%2F%20monitors-purple)
-![Coursework](https://img.shields.io/badge/UTH-ECE321-teal)
+![C](https://img.shields.io/badge/C-0E7C86?style=flat&logo=c&logoColor=white)
+![Java](https://img.shields.io/badge/Java-0E7C86?style=flat&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik00IDloMTN2NWE2IDYgMCAwIDEtNiA2aC0xYTYgNiAwIDAgMS02LTZ6Ii8+PHBhdGggZD0iTTE3IDExaDEuNWEyLjUgMi41IDAgMCAxIDAgNUgxNyIvPjxwYXRoIGQ9Ik04IDIuNWMtMSAxLjIgMSAyIDAgMy41TTEyIDIuNWMtMSAxLjIgMSAyIDAgMy41Ii8+PC9zdmc+)
+![pthreads](https://img.shields.io/badge/pthreads-8A6D2B?style=flat&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik00IDR2MTZNMTAgNHYxNk0xNiA0djE2Ii8+PHBhdGggZD0iTTQgOGg2TTEwIDE0aDZNMTYgMTBoNCIgc3Ryb2tlLXdpZHRoPSIxLjYiLz48L3N2Zz4=)
 
 Coursework repository for **ECE321 — Concurrent Programming** at the **University of Thessaly**. The projects are implemented primarily in C and cover pthread-based synchronization, custom semaphore abstractions, monitor-style coordination, coroutines, and user-level threads.
 
