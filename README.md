@@ -8,7 +8,7 @@
 
 Coursework repository for **ECE321 — Concurrent Programming** at the **University of Thessaly**. The projects are implemented primarily in C and cover pthread-based synchronization, custom semaphore abstractions, monitor-style coordination, coroutines, and user-level threads.
 
-The repository includes root-level build and validation scripts so the assignments can be compiled and exercised from a clean checkout.
+Root-level scripts build and test every assignment from a clean checkout.
 
 ## Quick overview
 
@@ -19,14 +19,14 @@ The repository includes root-level build and validation scripts so the assignmen
 | Coroutine runtime | `ucontext`-based coroutine primitives used to run earlier workloads without relying on OS threads. |
 | User-level threads | Round-robin scheduling, timer/signal preemption, `yield`, `sleep`, `join`, runtime semaphores, and assignment ports. |
 
-## Standout work: user-level threading runtime
+## Highlight: user-level thread runtime
 
-The strongest part of the repository is **Project 4**, where the earlier synchronization workloads are ported onto a custom coroutine and user-level threading runtime. Instead of only using pthreads or OS-provided blocking primitives, the project builds the scheduling layer itself and then runs real assignment workloads on top of it.
+In **Project 4** the earlier synchronization workloads are ported to a custom coroutine and user-level thread runtime. The project implements the scheduler itself rather than relying on pthreads or OS blocking primitives, then runs the assignment workloads on it.
 
 - **Coroutine foundation:** `getcontext`, `makecontext`, `setcontext`, and `swapcontext` are wrapped into reusable coroutine primitives with explicit context switching.
 - **User-level thread runtime:** Project 4 adds round-robin scheduling, timer/signal-based preemption, `yield`, `sleep`, `join`, and runtime-level binary semaphores.
 - **Workload ports:** FIFO file transfer, primality workers, narrow bridge, train/passenger synchronization, and readers/writers are adapted to run on the custom runtime.
-- **Runtime validation:** the final assignments exercise the scheduler through realistic coordination patterns rather than isolated toy calls.
+- **Runtime validation:** the ported assignments test the scheduler under real coordination patterns, not just isolated calls.
 
 <p align="center">
   <img src="docs/images/user-level-runtime.svg" alt="Project 4 coroutine and user-level thread runtime architecture" width="100%">
@@ -34,7 +34,7 @@ The strongest part of the repository is **Project 4**, where the earlier synchro
 
 ## Assignment overview
 
-Project handouts are collected under [`docs/handouts/`](docs/handouts/). The available project presentation PDFs are collected under [`docs/presentations/`](docs/presentations/). Project 1 does not currently have a recovered presentation artifact.
+Project handouts are collected under [`docs/handouts/`](docs/handouts/). Presentation PDFs are under [`docs/presentations/`](docs/presentations/); there is none for Project 1.
 
 <p align="center">
   <img src="docs/images/ece321-project-map.svg" alt="ECE321 project map from pthread workloads to semaphores, monitors, coroutines, and user-level threads" width="100%">
@@ -136,7 +136,7 @@ make
 ./run_test.sh -1
 ```
 
-Some assignments depend on libraries built by earlier directories. Running the root build first is the simplest way to prepare all dependencies:
+Some assignments link against libraries built in other directories. Run the root build first to prepare them:
 
 ```bash
 make build
